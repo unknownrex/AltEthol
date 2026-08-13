@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="retry">Coba lagi</string>
+    <string name="error_no_internet">Tidak ada koneksi internet</string>
+    <string name="error_server">Server sedang bermasalah</string>
+    <string name="error_unauthorized">Sesi berakhir, silakan login ulang</string>
+    <string name="error_bad_request">Permintaan tidak valid</string>
+    <string name="error_forbidden">Akses ditolak</string>
+    <string name="error_not_found">Data tidak ditemukan</string>
+    <string name="error_request_timeout">Permintaan melewati batas waktu</string>
+    <string name="error_conflict">Terjadi konflik data</string>
+    <string name="error_too_many_requests">Terlalu banyak permintaan</string>
+    <string name="error_payload_too_large">Data yang dikirim terlalu besar</string>
+    <string name="error_service_unavailable">Layanan tidak tersedia</string>
+    <string name="error_serialization">Gagal memproses respons</string>
+    <string name="error_disk_full">Penyimpanan perangkat penuh</string>
+    <string name="error_local_not_found">Data lokal tidak ditemukan</string>
+    <string name="error_unknown">Terjadi kesalahan yang tidak diketahui</string>
+</resources>

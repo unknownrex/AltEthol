@@ -1,4 +1,5 @@
 import com.android.build.gradle.ProguardFiles.getDefaultProguardFile
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -33,6 +34,25 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            val secretPropertiesFile = rootProject.file("app/src/release/secret.properties")
+            check(secretPropertiesFile.exists()) {
+                "Missing app/src/release/secret.properties — copy it from secret.properties.example"
+            }
+            val secretProperties = Properties().apply {
+                load(secretPropertiesFile.inputStream())
+            }
+            buildConfigField("String", "BASE_URL", secretProperties.getProperty("BASE_URL"))
+        }
+        debug {
+            val secretPropertiesFile = rootProject.file("app/src/debug/secret.properties")
+            check(secretPropertiesFile.exists()) {
+                "Missing app/src/debug/secret.properties — copy it from secret.properties.example"
+            }
+            val secretProperties = Properties().apply {
+                load(secretPropertiesFile.inputStream())
+            }
+            buildConfigField("String", "BASE_URL", secretProperties.getProperty("BASE_URL"))
         }
     }
     compileOptions {
@@ -44,6 +64,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
@@ -54,6 +75,10 @@ android {
 
 dependencies {
 
+    implementation(project(":core:common"))
+    implementation(project(":core:data"))
+    implementation(project(":core:ui"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -62,6 +87,17 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.kotlinx.serialization.json)
+
+    implementation(libs.koin.core)
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
+
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.logging)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

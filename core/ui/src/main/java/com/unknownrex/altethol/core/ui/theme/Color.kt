@@ -1,4 +1,4 @@
-package com.unknownrex.altethol.ui.theme
+package com.unknownrex.altethol.core.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

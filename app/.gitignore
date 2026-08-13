@@ -1,1 +1,3 @@
 /build
+/src/debug/secret.properties
+/src/release/secret.properties

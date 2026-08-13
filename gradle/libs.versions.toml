@@ -21,6 +21,14 @@ koinVersion = "3.5.6"
 dataStore = "1.1.1"
 navigation = "2.8.0"
 ktor = "2.3.11"
+coroutines = "1.8.1"
+junitJupiter = "5.10.2"
+junitPlatform = "1.10.2"
+assertk = "0.28.1"
+turbine = "1.1.0"
+room = "2.6.1"
+securityCrypto = "1.1.0-alpha06"
+tink = "1.8.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -59,6 +67,23 @@ ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "k
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-kotlinx-serialization = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+
+#room
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+
+#security
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
+tink-android = { module = "com.google.crypto.tink:tink-android", version.ref = "tink" }
+
+#testing
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junitJupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junitPlatform" }
+assertk = { module = "com.willowtreeapps.assertk:assertk", version.ref = "assertk" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
 
 [plugins]
