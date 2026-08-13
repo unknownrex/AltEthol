@@ -1,7 +1,9 @@
 package com.unknownrex.altethol.core.data.di
 
 import com.unknownrex.altethol.core.data.local.db.AltEtholDatabase
+import com.unknownrex.altethol.core.data.remote.AttendanceRepository
 import com.unknownrex.altethol.core.data.remote.AuthRepository
+import com.unknownrex.altethol.core.data.remote.DefaultAttendanceRepository
 import com.unknownrex.altethol.core.data.remote.DefaultAuthRepository
 import com.unknownrex.altethol.core.data.session.SessionCipher
 import com.unknownrex.altethol.core.data.session.SessionPreferences
@@ -19,4 +21,5 @@ val coreDataModule: Module = module {
     single { get<AltEtholDatabase>().absensiHistoriDao() }
     single { get<AltEtholDatabase>().notifCacheDao() }
     singleOf(::DefaultAuthRepository) { bind<AuthRepository>() }
+    singleOf(::DefaultAttendanceRepository) { bind<AttendanceRepository>() }
 }

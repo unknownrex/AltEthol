@@ -23,4 +23,6 @@
     <string name="engine_notification_title">AltEthol aktif</string>
     <string name="engine_notification_text">Memantau presensi tiap 5 menit</string>
     <string name="engine_channel_name">Mesin Authol</string>
+    <string name="engine_session_expired_title">Sesi berakhir</string>
+    <string name="engine_session_expired_text">Silakan login ulang untuk melanjutkan Authol</string>
 </resources>
