@@ -13,14 +13,14 @@ class SessionCipher(context: Context) {
     private val appContext = context.applicationContext
 
     private val aead: Aead by lazy {
-        val masterKey = MasterKey.Builder(appContext)
+        val masterKey = MasterKey.Builder(appContext, MasterKey.DEFAULT_MASTER_KEY_ALIAS)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
         AeadConfig.register()
         val keysetHandle = AndroidKeysetManager.Builder()
             .withSharedPref(appContext, SESSION_KEYSET_PREF, SESSION_KEYSET_ALIAS)
             .withKeyTemplate(KeyTemplates.get("AES256_GCM"))
-            .withMasterKeyUri(masterKey.toString())
+            .withMasterKeyUri("android-keystore://${MasterKey.DEFAULT_MASTER_KEY_ALIAS}")
             .build()
             .keysetHandle
         keysetHandle.getPrimitive(Aead::class.java)

@@ -12,9 +12,9 @@ import kotlinx.coroutines.flow.map
 class SessionPreferences(
     private val dataStore: DataStore<Preferences>,
     private val cipher: SessionCipher,
-) {
+) : SessionStorage {
 
-    val session: Flow<SessionState> = combine(
+    override val session: Flow<SessionState> = combine(
         dataStore.data.map { it[Keys.IS_LOGGED_IN] ?: false },
         dataStore.data.map { decrypt(it, Keys.TOKEN) },
         dataStore.data.map { decrypt(it, Keys.COOKIE) },
@@ -38,7 +38,7 @@ class SessionPreferences(
 
     val isLoggedIn: Flow<Boolean> = dataStore.data.map { it[Keys.IS_LOGGED_IN] ?: false }
 
-    suspend fun saveSession(token: String, cookie: String? = null) {
+    override suspend fun saveSession(token: String, cookie: String?) {
         dataStore.edit { prefs ->
             prefs[Keys.TOKEN] = cipher.encrypt(token, TOKEN_AD)
             prefs[Keys.IS_LOGGED_IN] = true
@@ -48,7 +48,7 @@ class SessionPreferences(
         }
     }
 
-    suspend fun saveMahasiswaId(id: Int) {
+    override suspend fun saveMahasiswaId(id: Int) {
         dataStore.edit { prefs ->
             prefs[Keys.MAHASISWA_ID] = cipher.encrypt(id.toString(), MAHASISWA_ID_AD)
         }
@@ -60,7 +60,7 @@ class SessionPreferences(
         }
     }
 
-    suspend fun clear() {
+    override suspend fun clear() {
         dataStore.edit { it.clear() }
     }
 

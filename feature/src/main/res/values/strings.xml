@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="login_unrecognized">Login tidak dikenali, silakan coba lagi</string>
+    <string name="login_reload">Muat ulang</string>
+    <string name="home_title">AltEthol</string>
+    <string name="cd_history">Riwayat</string>
+    <string name="cd_settings">Pengaturan</string>
+    <string name="engine_active">Auto presensi aktif</string>
+    <string name="engine_inactive">Auto presensi nonaktif</string>
+    <string name="engine_active_desc">AltEthol akan mengisi presensi secara otomatis setiap interval yang ditentukan.</string>
+    <string name="engine_inactive_desc">Aktifkan untuk memantau jadwal dan mengisi presensi secara otomatis.</string>
+    <string name="request_next_label">Request selanjutnya</string>
+    <string name="request_next_paused">Dijeda</string>
+    <string name="metric_interval_value">5 menit</string>
+    <string name="metric_interval_label">Interval request</string>
+    <string name="metric_attendance_value">0</string>
+    <string name="metric_attendance_label">Absensi hari ini</string>
+    <string name="cd_metric_interval">Interval request</string>
+    <string name="cd_metric_attendance">Absensi hari ini</string>
+    <string name="absen_now">Absen Sekarang</string>
+    <string name="absen_now_coming_soon">Fitur ini hadir pada fase berikutnya</string>
+    <string name="notification_permission_required">Izin notifikasi diperlukan untuk menjalankan Authol</string>
+    <string name="engine_notification_title">AltEthol aktif</string>
+    <string name="engine_notification_text">Memantau presensi tiap 5 menit</string>
+    <string name="engine_channel_name">Mesin Authol</string>
+</resources>
