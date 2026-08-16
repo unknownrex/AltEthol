@@ -10,3 +10,6 @@ data object LoginRoute
 
 @Serializable
 data object HomeRoute
+
+@Serializable
+data object HistoryRoute

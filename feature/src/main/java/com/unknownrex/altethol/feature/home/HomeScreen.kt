@@ -77,6 +77,7 @@ private const val ENGINE_POLL_SECONDS = 5 * 60L
 
 @Composable
 fun HomeRoot(
+    onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
@@ -136,6 +137,7 @@ fun HomeRoot(
                     else -> viewModel.onAction(action)
                 }
             },
+            onOpenHistory = onOpenHistory,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -145,6 +147,7 @@ fun HomeRoot(
 fun HomeScreen(
     state: HomeState,
     onAction: (HomeAction) -> Unit,
+    onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -152,7 +155,7 @@ fun HomeScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
     ) {
-        HomeHeader()
+        HomeHeader(onOpenHistory = onOpenHistory)
         Spacer(Modifier.height(24.dp))
         StatusCard(
             enabled = state.engineEnabled,
@@ -207,7 +210,10 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHeader(modifier: Modifier = Modifier) {
+private fun HomeHeader(
+    onOpenHistory: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -221,7 +227,7 @@ private fun HomeHeader(modifier: Modifier = Modifier) {
                 color = TextPrimary,
             )
             Spacer(Modifier.weight(1f))
-            IconButton(onClick = {}, modifier = Modifier.size(44.dp)) {
+            IconButton(onClick = onOpenHistory, modifier = Modifier.size(44.dp)) {
                 Icon(
                     imageVector = Icons.Outlined.History,
                     contentDescription = stringResource(R.string.cd_history),

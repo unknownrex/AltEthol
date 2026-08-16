@@ -9,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.unknownrex.altethol.feature.navigation.SessionCheckRoute
 import com.unknownrex.altethol.feature.navigation.authGraph
+import com.unknownrex.altethol.feature.navigation.historyGraph
 import com.unknownrex.altethol.feature.navigation.homeGraph
 
 @Composable
@@ -23,7 +24,8 @@ fun AppNavHost() {
         authGraph(
             navController = navController,
         )
-        homeGraph()
+        homeGraph(navController = navController)
+        historyGraph(navController = navController)
         }
     }
 }

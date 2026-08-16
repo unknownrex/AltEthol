@@ -5,6 +5,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.unknownrex.altethol.feature.auth.login.LoginRoot
 import com.unknownrex.altethol.feature.auth.sessioncheck.SessionCheckRoot
+import com.unknownrex.altethol.feature.history.HistoryRoot
 import com.unknownrex.altethol.feature.home.HomeRoot
 
 fun NavGraphBuilder.authGraph(
@@ -35,8 +36,18 @@ fun NavGraphBuilder.authGraph(
     }
 }
 
-fun NavGraphBuilder.homeGraph() {
+fun NavGraphBuilder.homeGraph(navController: NavController) {
     composable<HomeRoute> {
-        HomeRoot()
+        HomeRoot(
+            onOpenHistory = { navController.navigate(HistoryRoute) },
+        )
+    }
+}
+
+fun NavGraphBuilder.historyGraph(navController: NavController) {
+    composable<HistoryRoute> {
+        HistoryRoot(
+            onBack = { navController.popBackStack() },
+        )
     }
 }

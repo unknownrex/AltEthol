@@ -3,6 +3,7 @@ package com.unknownrex.altethol.feature.home.engine
 import android.util.Log
 import com.unknownrex.altethol.core.common.error.DataError
 import com.unknownrex.altethol.core.common.result.Result
+import com.unknownrex.altethol.core.data.local.db.dao.AbsensiHistoriDao
 import com.unknownrex.altethol.core.data.local.db.dao.NotifCacheDao
 import com.unknownrex.altethol.core.data.remote.AttendanceRepository
 
@@ -15,6 +16,7 @@ enum class SyncOutcome {
 class AttendanceSyncEngine(
     private val repository: AttendanceRepository,
     private val cacheDao: NotifCacheDao,
+    private val historyDao: AbsensiHistoriDao,
     private val coordinator: NotifDiffCoordinator,
     private val flowRunner: AttendanceFlowRunner,
     private val log: (String) -> Unit = { Log.d("AltEtholEngine", it) },
@@ -41,6 +43,7 @@ class AttendanceSyncEngine(
                 for (notif in candidates) {
                     val outcome = flowRunner.run(notif)
                     log("Hasil ${notif.idNotifikasi}: $outcome")
+                    historyDao.insert(outcome.toAbsensiHistoriEntity(notif))
                     if (outcome.networkError.isSessionExpired()) {
                         sessionExpired = true
                     }

@@ -25,4 +25,14 @@
     <string name="engine_channel_name">Mesin Authol</string>
     <string name="engine_session_expired_title">Sesi berakhir</string>
     <string name="engine_session_expired_text">Silakan login ulang untuk melanjutkan Authol</string>
+    <string name="history_title">Riwayat Absensi</string>
+    <string name="history_back">Kembali</string>
+    <string name="history_empty">Belum ada riwayat absensi</string>
+    <string name="history_status_success">Berhasil</string>
+    <string name="history_status_failed">Gagal</string>
+    <string name="history_step_mark_as_read">tandai dibaca</string>
+    <string name="history_step_get_key">ambil kunci presensi</string>
+    <string name="history_step_submit">kirim presensi</string>
+    <string name="history_label_detected">Waktu terdeteksi</string>
+    <string name="history_label_executed">Waktu dieksekusi</string>
 </resources>
