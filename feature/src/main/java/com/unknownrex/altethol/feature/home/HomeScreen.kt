@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -52,8 +53,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -73,11 +76,10 @@ import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
 
-private const val ENGINE_POLL_SECONDS = 5 * 60L
-
 @Composable
 fun HomeRoot(
     onOpenHistory: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
@@ -138,6 +140,7 @@ fun HomeRoot(
                 }
             },
             onOpenHistory = onOpenHistory,
+            onOpenSettings = onOpenSettings,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -148,6 +151,7 @@ fun HomeScreen(
     state: HomeState,
     onAction: (HomeAction) -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -155,11 +159,15 @@ fun HomeScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
     ) {
-        HomeHeader(onOpenHistory = onOpenHistory)
+        HomeHeader(
+            onOpenHistory = onOpenHistory,
+            onOpenSettings = onOpenSettings,
+        )
         Spacer(Modifier.height(24.dp))
         StatusCard(
             enabled = state.engineEnabled,
             onToggle = { onAction(HomeAction.OnToggleEngine(it)) },
+            intervalSeconds = state.pollIntervalMinutes * 60L,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp),
@@ -192,7 +200,7 @@ fun HomeScreen(
         ) {
             MetricCard(
                 icon = Icons.Outlined.Sync,
-                value = stringResource(R.string.metric_interval_value),
+                value = stringResource(R.string.interval_value_minutes, state.pollIntervalMinutes),
                 label = stringResource(R.string.metric_interval_label),
                 iconTint = BrandBlue,
                 modifier = Modifier.weight(1f),
@@ -212,20 +220,22 @@ fun HomeScreen(
 @Composable
 private fun HomeHeader(
     onOpenHistory: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
+            /*Text(
                 text = stringResource(R.string.home_title),
                 style = MaterialTheme.typography.headlineMedium,
                 color = TextPrimary,
-            )
+            )*/
+            Image(painter = painterResource(id = R.drawable.altethol_logo), contentDescription = "App Logo", modifier = Modifier.size(40.dp))
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onOpenHistory, modifier = Modifier.size(44.dp)) {
                 Icon(
@@ -234,7 +244,7 @@ private fun HomeHeader(
                     tint = TextSecondary,
                 )
             }
-            IconButton(onClick = {}, modifier = Modifier.size(44.dp)) {
+            IconButton(onClick = onOpenSettings, modifier = Modifier.size(44.dp)) {
                 Icon(
                     imageVector = Icons.Outlined.Settings,
                     contentDescription = stringResource(R.string.cd_settings),
@@ -242,7 +252,7 @@ private fun HomeHeader(
                 )
             }
         }
-        Spacer(Modifier.height(12.dp))
+        //Spacer(Modifier.height(12.dp))
         HorizontalDivider(color = BorderPrimary, thickness = 1.dp)
     }
 }
@@ -251,10 +261,11 @@ private fun HomeHeader(
 private fun StatusCard(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit,
+    intervalSeconds: Long,
     modifier: Modifier = Modifier,
 ) {
     val cardShape = RoundedCornerShape(24.dp)
-    val remainingSeconds = rememberRemainingSeconds(enabled)
+    val remainingSeconds = rememberRemainingSeconds(enabled, intervalSeconds)
     Column(
         modifier = modifier
             .clip(cardShape)
@@ -388,7 +399,7 @@ private fun MetricCard(
 }
 
 @Composable
-private fun rememberRemainingSeconds(enabled: Boolean, totalSeconds: Long = ENGINE_POLL_SECONDS): Long {
+private fun rememberRemainingSeconds(enabled: Boolean, totalSeconds: Long): Long {
     var remaining by remember(enabled) { mutableLongStateOf(totalSeconds) }
     LaunchedEffect(enabled) {
         if (!enabled) return@LaunchedEffect
@@ -406,4 +417,15 @@ private fun formatCountdown(totalSeconds: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+}
+
+@Preview
+@Composable
+private fun HomeScreenPreview() {
+    Column(
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+    ) {
+
+    }
+    HomeHeader(onOpenHistory = { /*TODO*/ }, onOpenSettings = { /*TODO*/ })
 }

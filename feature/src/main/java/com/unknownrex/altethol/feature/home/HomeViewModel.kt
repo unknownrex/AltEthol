@@ -2,6 +2,7 @@ package com.unknownrex.altethol.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.unknownrex.altethol.core.data.settings.SettingsStorage
 import com.unknownrex.altethol.core.ui.text.UiText
 import com.unknownrex.altethol.feature.R
 import com.unknownrex.altethol.feature.home.engine.EngineController
@@ -14,6 +15,7 @@ import kotlinx.coroutines.launch
 
 data class HomeState(
     val engineEnabled: Boolean = false,
+    val pollIntervalMinutes: Int = SettingsStorage.DEFAULT_POLL_INTERVAL_MINUTES,
 )
 
 sealed interface HomeAction {
@@ -27,6 +29,7 @@ sealed interface HomeEvent {
 
 class HomeViewModel(
     private val engineController: EngineController,
+    private val settingsStorage: SettingsStorage,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeState(engineController.enabled.value))
@@ -39,6 +42,11 @@ class HomeViewModel(
         viewModelScope.launch {
             engineController.enabled.collect { enabled ->
                 _state.update { it.copy(engineEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            settingsStorage.pollIntervalMinutes.collect { minutes ->
+                _state.update { it.copy(pollIntervalMinutes = minutes) }
             }
         }
     }
