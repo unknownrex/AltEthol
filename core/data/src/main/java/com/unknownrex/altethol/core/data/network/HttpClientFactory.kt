@@ -1,7 +1,6 @@
 package com.unknownrex.altethol.core.data.network
 
-import com.unknownrex.altethol.core.data.network.interceptor.CookieHeaderPlugin
-import com.unknownrex.altethol.core.data.network.interceptor.TokenHeaderPlugin
+import com.unknownrex.altethol.core.data.network.interceptor.AuthCookieHeaderPlugin
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.okhttp.OkHttp
@@ -22,8 +21,7 @@ object HttpClientFactory {
 
     fun create(
         baseUrl: String,
-        tokenProvider: suspend () -> String?,
-        cookieProvider: suspend () -> String?,
+        authCookieProvider: suspend () -> String?,
         engine: HttpClientEngine = OkHttp.create(),
         loggingLevel: LogLevel = LogLevel.BODY,
     ): HttpClient = HttpClient(engine) {
@@ -43,11 +41,8 @@ object HttpClientFactory {
             connectTimeoutMillis = 15_000
         }
 
-        install(TokenHeaderPlugin) {
-            this.tokenProvider = tokenProvider
-        }
-        install(CookieHeaderPlugin) {
-            this.cookieProvider = cookieProvider
+        install(AuthCookieHeaderPlugin) {
+            this.authCookieProvider = authCookieProvider
         }
 
         defaultRequest {

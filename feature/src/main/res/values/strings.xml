@@ -11,7 +11,7 @@
     <string name="engine_inactive_desc">Aktifkan untuk memantau jadwal dan mengisi presensi secara otomatis.</string>
     <string name="request_next_label">Request selanjutnya</string>
     <string name="request_next_paused">Dijeda</string>
-    <string name="metric_interval_value">5 menit</string>
+    <string name="interval_value_minutes">%1$d menit</string>
     <string name="metric_interval_label">Interval request</string>
     <string name="metric_attendance_value">0</string>
     <string name="metric_attendance_label">Absensi hari ini</string>
@@ -25,6 +25,11 @@
     <string name="engine_channel_name">Mesin Authol</string>
     <string name="engine_session_expired_title">Sesi berakhir</string>
     <string name="engine_session_expired_text">Silakan login ulang untuk melanjutkan Authol</string>
+    <string name="engine_result_channel_name">Hasil Absensi</string>
+    <string name="result_success_title">Absensi berhasil</string>
+    <string name="result_success_text">Berhasil</string>
+    <string name="result_failed_title">Absensi gagal</string>
+    <string name="result_failed_text">Gagal: %1$s</string>
     <string name="history_title">Riwayat Absensi</string>
     <string name="history_back">Kembali</string>
     <string name="history_empty">Belum ada riwayat absensi</string>
@@ -35,4 +40,20 @@
     <string name="history_step_submit">kirim presensi</string>
     <string name="history_label_detected">Waktu terdeteksi</string>
     <string name="history_label_executed">Waktu dieksekusi</string>
+    <string name="settings_title">Pengaturan</string>
+    <string name="settings_back">Kembali</string>
+    <string name="settings_interval_label">Interval Polling</string>
+    <string name="settings_interval_desc">Seberapa sering AltEthol memantau notifikasi presensi. Minimum 3 menit.</string>
+    <string name="interval_option_minutes">%1$d menit</string>
+    <string name="settings_battery_label">Battery Optimization</string>
+    <string name="settings_battery_exempted">Dikecualikan dari battery optimization — Authol aman dari pembatasan background.</string>
+    <string name="settings_battery_not_exempted">Belum dikecualikan — sistem bisa menghentikan Authol saat di background.</string>
+    <string name="settings_battery_action">Aktifkan pengecualian</string>
+    <string name="settings_about_label">Tentang</string>
+    <string name="settings_disclaimer">Aplikasi eksperimental, hanya untuk studi kasus pribadi. Tidak untuk dipublikasikan atau dibagikan.</string>
+    <string name="settings_logout">Keluar</string>
+    <string name="settings_logout_confirm_title">Keluar dari AltEthol?</string>
+    <string name="settings_logout_confirm_text">Sesi ETHOL akan dihapus dari perangkat dan Authol akan dihentikan.</string>
+    <string name="settings_logout_cancel">Batal</string>
+    <string name="settings_logout_confirm">Keluar</string>
 </resources>

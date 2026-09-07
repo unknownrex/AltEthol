@@ -11,6 +11,7 @@ import com.unknownrex.altethol.feature.navigation.SessionCheckRoute
 import com.unknownrex.altethol.feature.navigation.authGraph
 import com.unknownrex.altethol.feature.navigation.historyGraph
 import com.unknownrex.altethol.feature.navigation.homeGraph
+import com.unknownrex.altethol.feature.navigation.settingsGraph
 
 @Composable
 fun AppNavHost() {
@@ -26,6 +27,7 @@ fun AppNavHost() {
         )
         homeGraph(navController = navController)
         historyGraph(navController = navController)
+        settingsGraph(navController = navController)
         }
     }
 }

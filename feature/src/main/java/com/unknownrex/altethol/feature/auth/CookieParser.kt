@@ -4,6 +4,8 @@ object CookieParser {
 
     fun extractToken(cookie: String?): String? = parse(cookie)["token"]
 
+    fun extractRefreshToken(cookie: String?): String? = parse(cookie)["refresh_token"]
+
     fun extractPhpSessId(cookie: String?): String? = parse(cookie)["phpsessid"]
 
     fun parse(cookie: String?): Map<String, String> {

@@ -3,8 +3,13 @@ package com.unknownrex.altethol.feature.auth.login
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.unknownrex.altethol.core.common.error.DataError
+import com.unknownrex.altethol.core.common.result.onFailure
+import com.unknownrex.altethol.core.common.result.onSuccess
+import com.unknownrex.altethol.core.data.remote.AuthRepository
 import com.unknownrex.altethol.core.data.session.SessionStorage
 import com.unknownrex.altethol.core.ui.text.UiText
+import com.unknownrex.altethol.core.ui.text.toUiText
 import com.unknownrex.altethol.feature.auth.CookieParser
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +35,7 @@ sealed interface LoginEvent {
 
 class LoginViewModel(
     private val sessionStorage: SessionStorage,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LoginState())
@@ -49,23 +55,48 @@ class LoginViewModel(
 
     private fun handleLoginSuccess(cookieString: String) {
         val token = CookieParser.extractToken(cookieString)
-        val phpSessId = CookieParser.extractPhpSessId(cookieString)
-        Log.d(TAG, "Login success. token=${token?.take(16)} phpSessId=${phpSessId?.take(16)}")
+        val refreshToken = CookieParser.extractRefreshToken(cookieString)
+        Log.d(TAG, "Login success. token=${token?.take(16)} refreshToken=${refreshToken?.take(16)}")
+
+        if (token.isNullOrBlank()) {
+            Log.d(TAG, "No token cookie found, staying on login")
+            return
+        }
 
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true) }
-            persistSessionBestEffort(token, phpSessId)
-            _events.send(LoginEvent.NavigateToHome)
+            persistSessionBestEffort(token, refreshToken)
+
+            authRepository.validateToken().onSuccess { data ->
+                Log.d(TAG, "Validation OK, nomor=${data.nomor}")
+                sessionStorage.saveMahasiswaId(data.nomor)
+                _events.send(LoginEvent.NavigateToHome)
+            }.onFailure { error ->
+                Log.e(TAG, "Validation failed: $error")
+                when (error) {
+                    DataError.Network.UNAUTHORIZED,
+                    DataError.Network.FORBIDDEN,
+                    -> sessionStorage.clear()
+
+                    else -> Unit
+                }
+                _state.update {
+                    it.copy(
+                        isSaving = false,
+                        error = error.toUiText(),
+                    )
+                }
+            }
         }
     }
 
-    private suspend fun persistSessionBestEffort(token: String?, phpSessId: String?) {
+    private suspend fun persistSessionBestEffort(token: String?, refreshToken: String?) {
         if (token.isNullOrBlank()) {
             Log.d(TAG, "No token cookie found, skipping session persistence")
             return
         }
         runCatching {
-            sessionStorage.saveSession(token, phpSessId)
+            sessionStorage.saveSession(token, refreshToken)
         }.onSuccess {
             Log.d(TAG, "Session persisted")
         }.onFailure {

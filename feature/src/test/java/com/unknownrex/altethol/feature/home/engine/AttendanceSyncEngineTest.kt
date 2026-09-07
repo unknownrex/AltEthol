@@ -14,13 +14,19 @@ import com.unknownrex.altethol.core.data.local.db.entity.NotifCacheEntity
 import com.unknownrex.altethol.core.data.model.AttendanceStatus
 import com.unknownrex.altethol.core.data.model.AttendanceStep
 import com.unknownrex.altethol.core.data.remote.AttendanceRepository
+import com.unknownrex.altethol.core.data.remote.AuthRepository
 import com.unknownrex.altethol.core.data.remote.dto.BacaNotifDto
 import com.unknownrex.altethol.core.data.remote.dto.KuliahDto
 import com.unknownrex.altethol.core.data.remote.dto.NotifikasiDto
 import com.unknownrex.altethol.core.data.remote.dto.PresensiMahasiswaDto
 import com.unknownrex.altethol.core.data.remote.dto.PresensiMahasiswaRequest
 import com.unknownrex.altethol.core.data.remote.dto.TerakhirKuliahDto
+import com.unknownrex.altethol.core.data.remote.dto.ValidasiTokenDto
+import com.unknownrex.altethol.core.data.session.SessionState
+import com.unknownrex.altethol.core.data.session.SessionStorage
+import com.unknownrex.altethol.core.data.session.TokenRefresher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
@@ -102,6 +108,39 @@ class AttendanceSyncEngineTest {
         override suspend fun resolve(notif: NotifikasiDto) = result
     }
 
+    private class FakeAuthRepository(
+        var refreshResult: Result<String, DataError.Network>,
+    ) : AuthRepository {
+        var refreshCalls = 0
+
+        override suspend fun validateToken(): Result<ValidasiTokenDto, DataError.Network> =
+            Result.Success(ValidasiTokenDto(nomor = 28801, nipnrp = "n", nama = "n"))
+
+        override suspend fun refreshToken(): Result<String, DataError.Network> {
+            refreshCalls++
+            return refreshResult
+        }
+    }
+
+    private class FakeSessionStorage(
+        initialState: SessionState,
+    ) : SessionStorage {
+        val sessionFlow = MutableStateFlow(initialState)
+        var savedToken: String? = null
+
+        override val session: Flow<SessionState> = sessionFlow
+
+        override suspend fun saveSession(token: String, refreshToken: String?) = Unit
+
+        override suspend fun saveToken(token: String) {
+            savedToken = token
+        }
+
+        override suspend fun saveMahasiswaId(id: Int) = Unit
+
+        override suspend fun clear() = Unit
+    }
+
     private fun notif(id: String = "new-1") = NotifikasiDto(
         idNotifikasi = id,
         keterangan = "Dosen telah melakukan presensi",
@@ -114,17 +153,41 @@ class AttendanceSyncEngineTest {
         createdAtIndonesia = "Kamis, 13 Agustus 2026 - 14:58",
     )
 
+    private fun loggedInSession() = SessionState(
+        isLoggedIn = true,
+        token = "token",
+        refreshToken = "refresh-token",
+    )
+
+    private fun freshRefresher() = TokenRefresher(
+        sessionStorage = FakeSessionStorage(loggedInSession()),
+        authRepository = FakeAuthRepository(Result.Success("new-token")),
+        jwtExpiration = { 4_000_000_000L },
+        now = { 0L },
+    )
+
+    private fun stalledRefresher(
+        auth: FakeAuthRepository,
+    ): TokenRefresher = TokenRefresher(
+        sessionStorage = FakeSessionStorage(loggedInSession()),
+        authRepository = auth,
+        jwtExpiration = { 1L },
+        now = { 0L },
+    )
+
     private fun engine(
         repo: AttendanceRepository,
         cache: FakeNotifCacheDao,
         history: FakeAbsensiHistoriDao,
         resolver: PresensiContextResolver,
+        refresher: TokenRefresher = freshRefresher(),
     ) = AttendanceSyncEngine(
         repository = repo,
         cacheDao = cache,
         historyDao = history,
         coordinator = NotifDiffCoordinator(),
         flowRunner = AttendanceFlowRunner(repo, resolver, log = {}),
+        tokenRefresher = refresher,
         log = {},
     )
 
@@ -135,9 +198,11 @@ class AttendanceSyncEngineTest {
         val history = FakeAbsensiHistoriDao()
         val engine = engine(repo, cache, history, FakeContextResolver())
 
-        val outcome = engine.syncOnce()
+        val result = engine.syncOnce()
 
-        assertThat(outcome).isEqualTo(SyncOutcome.OK)
+        assertThat(result.outcome).isEqualTo(SyncOutcome.OK)
+        assertThat(result.flowResults).hasSize(1)
+        assertThat(result.flowResults.first() is AttendanceFlowResult.Submitted).isTrue()
         assertThat(repo.submitCalled).isTrue()
         assertThat(cache.getAll()).hasSize(1)
         assertThat(cache.getAll().first().idNotifikasi).isEqualTo("new-1")
@@ -158,9 +223,11 @@ class AttendanceSyncEngineTest {
         val history = FakeAbsensiHistoriDao()
         val engine = engine(repo, cache, history, FakeContextResolver())
 
-        val outcome = engine.syncOnce()
+        val result = engine.syncOnce()
 
-        assertThat(outcome).isEqualTo(SyncOutcome.SESSION_EXPIRED)
+        assertThat(result.outcome).isEqualTo(SyncOutcome.SESSION_EXPIRED)
+        assertThat(result.flowResults).hasSize(1)
+        assertThat(result.flowResults.first() is AttendanceFlowResult.Failed).isTrue()
         assertThat(history.records).hasSize(1)
         assertThat(history.records.first().status).isEqualTo(AttendanceStatus.FAILED)
         assertThat(history.records.first().failedStep).isEqualTo(AttendanceStep.MARK_AS_READ)
@@ -176,9 +243,11 @@ class AttendanceSyncEngineTest {
         val history = FakeAbsensiHistoriDao()
         val engine = engine(repo, cache, history, FakeContextResolver())
 
-        val outcome = engine.syncOnce()
+        val result = engine.syncOnce()
 
-        assertThat(outcome).isEqualTo(SyncOutcome.OK)
+        assertThat(result.outcome).isEqualTo(SyncOutcome.OK)
+        assertThat(result.flowResults).hasSize(1)
+        assertThat(result.flowResults.first() is AttendanceFlowResult.Skipped).isTrue()
         assertThat(history.records).hasSize(1)
         assertThat(history.records.first().status).isEqualTo(AttendanceStatus.FAILED)
         assertThat(history.records.first().failedStep).isNull()
@@ -194,9 +263,9 @@ class AttendanceSyncEngineTest {
         val history = FakeAbsensiHistoriDao()
         val engine = engine(repo, cache, history, FakeContextResolver())
 
-        val outcome = engine.syncOnce()
+        val result = engine.syncOnce()
 
-        assertThat(outcome).isEqualTo(SyncOutcome.OK)
+        assertThat(result.outcome).isEqualTo(SyncOutcome.OK)
         assertThat(repo.submitCalled).isEqualTo(false)
         assertThat(history.records).hasSize(0)
     }
@@ -208,9 +277,9 @@ class AttendanceSyncEngineTest {
         val history = FakeAbsensiHistoriDao()
         val engine = engine(repo, cache, history, FakeContextResolver())
 
-        val outcome = engine.syncOnce()
+        val result = engine.syncOnce()
 
-        assertThat(outcome).isEqualTo(SyncOutcome.SESSION_EXPIRED)
+        assertThat(result.outcome).isEqualTo(SyncOutcome.SESSION_EXPIRED)
     }
 
     @Test
@@ -223,9 +292,9 @@ class AttendanceSyncEngineTest {
         val history = FakeAbsensiHistoriDao()
         val engine = engine(repo, cache, history, FakeContextResolver())
 
-        val outcome = engine.syncOnce()
+        val result = engine.syncOnce()
 
-        assertThat(outcome).isEqualTo(SyncOutcome.SESSION_EXPIRED)
+        assertThat(result.outcome).isEqualTo(SyncOutcome.SESSION_EXPIRED)
     }
 
     @Test
@@ -235,10 +304,52 @@ class AttendanceSyncEngineTest {
         val history = FakeAbsensiHistoriDao()
         val engine = engine(repo, cache, history, FakeContextResolver())
 
-        val outcome = engine.syncOnce()
+        val result = engine.syncOnce()
 
-        assertThat(outcome).isEqualTo(SyncOutcome.RETRYABLE_ERROR)
+        assertThat(result.outcome).isEqualTo(SyncOutcome.RETRYABLE_ERROR)
         assertThat(cache.getAll()).hasSize(0)
         assertThat(history.records).hasSize(0)
+    }
+
+    @Test
+    fun `sync refreshes stale token before fetching`() = runTest {
+        val repo = FakeAttendanceRepository(fetchResult = Result.Success(listOf(notif())))
+        val cache = FakeNotifCacheDao()
+        val history = FakeAbsensiHistoriDao()
+        val auth = FakeAuthRepository(Result.Success("refreshed-token"))
+        val refresher = stalledRefresher(auth)
+        val engine = engine(repo, cache, history, FakeContextResolver(), refresher)
+
+        val result = engine.syncOnce()
+
+        assertThat(result.outcome).isEqualTo(SyncOutcome.OK)
+        assertThat(auth.refreshCalls).isEqualTo(1)
+    }
+
+    @Test
+    fun `sync returns session expired when token refresh is unauthorized`() = runTest {
+        val repo = FakeAttendanceRepository(fetchResult = Result.Success(emptyList()))
+        val cache = FakeNotifCacheDao()
+        val history = FakeAbsensiHistoriDao()
+        val auth = FakeAuthRepository(Result.Error(DataError.Network.UNAUTHORIZED))
+        val engine = engine(repo, cache, history, FakeContextResolver(), stalledRefresher(auth))
+
+        val result = engine.syncOnce()
+
+        assertThat(result.outcome).isEqualTo(SyncOutcome.SESSION_EXPIRED)
+        assertThat(cache.getAll()).hasSize(0)
+    }
+
+    @Test
+    fun `sync returns retryable when token refresh fails with network error`() = runTest {
+        val repo = FakeAttendanceRepository(fetchResult = Result.Success(emptyList()))
+        val cache = FakeNotifCacheDao()
+        val history = FakeAbsensiHistoriDao()
+        val auth = FakeAuthRepository(Result.Error(DataError.Network.NO_INTERNET))
+        val engine = engine(repo, cache, history, FakeContextResolver(), stalledRefresher(auth))
+
+        val result = engine.syncOnce()
+
+        assertThat(result.outcome).isEqualTo(SyncOutcome.RETRYABLE_ERROR)
     }
 }

@@ -1,9 +1,11 @@
 package com.unknownrex.altethol.di
 
+import android.util.Log
 import com.unknownrex.altethol.BuildConfig
 import com.unknownrex.altethol.core.data.di.DiQualifiers
 import com.unknownrex.altethol.core.data.network.HttpClientFactory
-import com.unknownrex.altethol.core.data.session.SessionPreferences
+import com.unknownrex.altethol.core.data.network.cookie.AuthCookieBuilder
+import com.unknownrex.altethol.core.data.session.SessionStorage
 import io.ktor.client.plugins.logging.LogLevel
 import kotlinx.coroutines.flow.first
 import org.koin.core.module.Module
@@ -16,8 +18,15 @@ val appModule: Module = module {
     single {
         HttpClientFactory.create(
             baseUrl = get(named(DiQualifiers.BASE_URL)),
-            tokenProvider = { get<SessionPreferences>().token.first() },
-            cookieProvider = { get<SessionPreferences>().cookiePhpSessId.first() },
+            authCookieProvider = {
+                val state = get<SessionStorage>().session.first()
+                val cookie = AuthCookieBuilder.build(
+                    token = state.token,
+                    refreshToken = state.refreshToken,
+                )
+                Log.d("AltEtholAuthCookie", "built cookie token=${state.token?.length ?: -1}chars refreshToken=${state.refreshToken?.length ?: -1}chars -> cookie=$cookie")
+                cookie
+            },
             loggingLevel = if (BuildConfig.DEBUG) LogLevel.BODY else LogLevel.NONE,
         )
     }

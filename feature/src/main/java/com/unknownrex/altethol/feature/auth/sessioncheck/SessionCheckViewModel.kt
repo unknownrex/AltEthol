@@ -7,7 +7,9 @@ import com.unknownrex.altethol.core.ui.text.toUiText
 import com.unknownrex.altethol.core.common.result.onFailure
 import com.unknownrex.altethol.core.common.result.onSuccess
 import com.unknownrex.altethol.core.data.remote.AuthRepository
+import com.unknownrex.altethol.core.data.session.SessionRefreshResult
 import com.unknownrex.altethol.core.data.session.SessionStorage
+import com.unknownrex.altethol.core.data.session.TokenRefresher
 import com.unknownrex.altethol.core.ui.text.UiText
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +36,7 @@ sealed interface SessionCheckEvent {
 class SessionCheckViewModel(
     private val authRepository: AuthRepository,
     private val sessionStorage: SessionStorage,
+    private val tokenRefresher: TokenRefresher,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<SessionCheckState>(SessionCheckState.Checking)
@@ -60,6 +63,25 @@ class SessionCheckViewModel(
             if (!session.hasSession) {
                 _events.send(SessionCheckEvent.NavigateToLogin)
                 return@launch
+            }
+
+            when (val refreshResult = tokenRefresher.refreshIfNeeded()) {
+                SessionRefreshResult.SESSION_EXPIRED -> {
+                    sessionStorage.clear()
+                    _events.send(SessionCheckEvent.NavigateToLogin)
+                    return@launch
+                }
+
+                SessionRefreshResult.ERROR -> {
+                    _state.update {
+                        SessionCheckState.Error(DataError.Network.UNKNOWN.toUiText())
+                    }
+                    return@launch
+                }
+
+                SessionRefreshResult.REFRESHED,
+                SessionRefreshResult.ALREADY_FRESH,
+                -> Unit
             }
 
             authRepository.validateToken()

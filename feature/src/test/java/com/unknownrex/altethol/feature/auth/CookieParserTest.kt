@@ -17,10 +17,20 @@ class CookieParserTest {
     }
 
     @Test
+    fun `extracts refresh token from cookie string`() {
+        val cookie = "token=eyJhbGciOiJIUzI1NiJ9; refresh_token=eyJhbGciOiJIUzI1NiJ8; PHPSESSID=abc123"
+
+        assertThat(CookieParser.extractToken(cookie)).isEqualTo("eyJhbGciOiJIUzI1NiJ9")
+        assertThat(CookieParser.extractRefreshToken(cookie)).isEqualTo("eyJhbGciOiJIUzI1NiJ8")
+        assertThat(CookieParser.extractPhpSessId(cookie)).isEqualTo("abc123")
+    }
+
+    @Test
     fun `cookie names are case insensitive`() {
-        val cookie = "Token=jwt-token; PhpSessId=sess"
+        val cookie = "Token=jwt-token; Refresh_Token=refresh-jwt; PhpSessId=sess"
 
         assertThat(CookieParser.extractToken(cookie)).isEqualTo("jwt-token")
+        assertThat(CookieParser.extractRefreshToken(cookie)).isEqualTo("refresh-jwt")
         assertThat(CookieParser.extractPhpSessId(cookie)).isEqualTo("sess")
     }
 
@@ -33,9 +43,10 @@ class CookieParserTest {
 
     @Test
     fun `spaces around separators are trimmed`() {
-        val cookie = "  token = trimmed  ; PHPSESSID=ok"
+        val cookie = "  token = trimmed  ; refresh_token = rt-ok; PHPSESSID=ok"
 
         assertThat(CookieParser.extractToken(cookie)).isEqualTo("trimmed")
+        assertThat(CookieParser.extractRefreshToken(cookie)).isEqualTo("rt-ok")
         assertThat(CookieParser.extractPhpSessId(cookie)).isEqualTo("ok")
     }
 

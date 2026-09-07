@@ -10,12 +10,14 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.unknownrex.altethol.core.data.settings.SettingsStorage
 import com.unknownrex.altethol.feature.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
@@ -24,6 +26,8 @@ class AttendanceSyncService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val syncEngine: AttendanceSyncEngine by lazy { get() }
+    private val settings: SettingsStorage by lazy { get() }
+    private val notifier: AttendanceNotifier by lazy { get() }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -57,8 +61,9 @@ class AttendanceSyncService : Service() {
 
     private suspend fun CoroutineScope.runSyncLoop() {
         while (isActive) {
-            val outcome = syncEngine.syncOnce()
-            if (outcome == SyncOutcome.SESSION_EXPIRED) {
+            val syncResult = syncEngine.syncOnce()
+            syncResult.flowResults.forEach { notifier.notifyResult(it) }
+            if (syncResult.outcome == SyncOutcome.SESSION_EXPIRED) {
                 Log.d(TAG, "Sesi berakhir, menghentikan layanan")
                 notifySessionExpired()
                 stopSelf()
@@ -68,7 +73,10 @@ class AttendanceSyncService : Service() {
         }
     }
 
-    private fun pollIntervalMs(): Long = maxOf(POLL_INTERVAL_MS, MIN_POLL_INTERVAL_MS)
+    private suspend fun pollIntervalMs(): Long {
+        val minutes = settings.pollIntervalMinutes.first()
+        return maxOf(minutes * 60_000L, MIN_POLL_INTERVAL_MS)
+    }
 
     private fun notifySessionExpired() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -99,7 +107,6 @@ class AttendanceSyncService : Service() {
         const val CHANNEL_ID = "altethol_engine"
         const val NOTIFICATION_ID = 1001
         const val SESSION_EXPIRED_NOTIFICATION_ID = 1002
-        const val POLL_INTERVAL_MS = 5 * 60 * 1000L
         const val MIN_POLL_INTERVAL_MS = 3 * 60 * 1000L
     }
 }

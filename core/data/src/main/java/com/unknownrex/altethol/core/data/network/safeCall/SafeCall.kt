@@ -1,5 +1,6 @@
 package com.unknownrex.altethol.core.data.network.safeCall
 
+import android.util.Log
 import com.unknownrex.altethol.core.common.error.DataError
 import com.unknownrex.altethol.core.common.result.Result
 import io.ktor.client.call.body
@@ -33,6 +34,7 @@ suspend inline fun <reified T> safeCall(
     } catch (e: JsonConvertException) {
         return Result.Error(DataError.Network.SERIALIZATION)
     } catch (e: Exception) {
+        Log.e("AltEtholSafeCall", "safeCall failed: ${e::class.simpleName}: ${e.message}", e)
         return Result.Error(DataError.Network.UNKNOWN)
     }
 

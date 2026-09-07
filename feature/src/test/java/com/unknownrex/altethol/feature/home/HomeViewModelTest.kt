@@ -3,9 +3,11 @@ package com.unknownrex.altethol.feature.home
 import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import com.unknownrex.altethol.core.data.settings.SettingsStorage
 import com.unknownrex.altethol.feature.home.engine.EngineController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -42,9 +44,27 @@ class HomeViewModelTest {
         }
     }
 
+    private class FakeSettingsStorage(
+        initialInterval: Int = SettingsStorage.DEFAULT_POLL_INTERVAL_MINUTES,
+    ) : SettingsStorage {
+        private val _pollIntervalMinutes = MutableStateFlow(initialInterval)
+        override val pollIntervalMinutes: Flow<Int> = _pollIntervalMinutes
+        var lastSetInterval: Int? = null
+
+        override suspend fun setPollIntervalMinutes(minutes: Int) {
+            lastSetInterval = minutes
+            _pollIntervalMinutes.value = minutes
+        }
+    }
+
+    private fun viewModel(
+        controller: FakeEngineController = FakeEngineController(),
+        settings: FakeSettingsStorage = FakeSettingsStorage(),
+    ) = HomeViewModel(controller, settings)
+
     @Test
     fun `initial state reflects controller`() {
-        val viewModel = HomeViewModel(FakeEngineController(initialEnabled = true))
+        val viewModel = viewModel(controller = FakeEngineController(initialEnabled = true))
 
         assertThat(viewModel.state.value.engineEnabled).isEqualTo(true)
     }
@@ -52,7 +72,7 @@ class HomeViewModelTest {
     @Test
     fun `toggling engine delegates to controller`() {
         val controller = FakeEngineController()
-        val viewModel = HomeViewModel(controller)
+        val viewModel = viewModel(controller = controller)
 
         viewModel.onAction(HomeAction.OnToggleEngine(true))
 
@@ -61,8 +81,16 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `state reflects stored poll interval`() {
+        val settings = FakeSettingsStorage(initialInterval = 10)
+        val viewModel = viewModel(settings = settings)
+
+        assertThat(viewModel.state.value.pollIntervalMinutes).isEqualTo(10)
+    }
+
+    @Test
     fun `absen now shows placeholder message`() = runTest {
-        val viewModel = HomeViewModel(FakeEngineController())
+        val viewModel = viewModel()
 
         viewModel.events.test {
             viewModel.onAction(HomeAction.OnAbsenNow)

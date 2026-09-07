@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,14 +32,26 @@ import com.unknownrex.altethol.core.ui.ObserveAsEvents
 import com.unknownrex.altethol.core.ui.text.UiText
 import com.unknownrex.altethol.core.ui.text.asString
 import com.unknownrex.altethol.feature.R
+import com.unknownrex.altethol.feature.auth.CookieParser
+import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 
-private const val LOGIN_URL =
-    "https://login.pens.ac.id/cas/login?service=http%3A%2F%2Fethol.pens.ac.id%2Fcas%2F"
+private const val LOGIN_URL = "https://ethol.pens.ac.id/api/auth/cas-redirect"
 
-private const val DASHBOARD_URL_SEGMENT = "/mahasiswa/beranda"
+private const val ETHOL_COOKIE_ORIGIN = "https://ethol.pens.ac.id"
+
+private const val COOKIE_POLL_INTERVAL_MS = 400L
 
 private const val TAG = "AltEtholLoginWeb"
+
+private fun logCurrentUrl(url: String?) {
+    Log.d(TAG, "onPage url=$url")
+}
+
+private fun etholCookieString(): String =
+    CookieManager.getInstance().getCookie(ETHOL_COOKIE_ORIGIN).orEmpty()
+
+private fun hasTokenCookie(): Boolean = CookieParser.extractToken(etholCookieString()) != null
 
 @Composable
 fun LoginRoot(
@@ -97,44 +110,52 @@ private fun AuthWebView(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val successHandled = remember { mutableStateOf(false) }
+    val webViewRef = remember { mutableStateOf<WebView?>(null) }
+
+    val fireSuccess: () -> Unit = {
+        successHandled.value = true
+        val cookies = etholCookieString()
+        Log.d(TAG, "Auth cookies detected, cookies=$cookies")
+        webViewRef.value?.stopLoading()
+        onLoginSuccess(cookies)
+    }
+
     val webView = remember {
         WebView(context).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
-            var successHandled = false
             webViewClient = object : WebViewClient() {
                 override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                     super.onPageStarted(view, url, favicon)
-                    handleDashboardReached(url)
+                    logCurrentUrl(url)
+                    if (!successHandled.value && hasTokenCookie()) fireSuccess()
                 }
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    handleDashboardReached(url)
-                }
-
-                private fun handleDashboardReached(url: String?) {
-                    val current = url ?: return
-                    Log.d(TAG, "onPage url=$current")
-                    if (!successHandled && current.contains(DASHBOARD_URL_SEGMENT)) {
-                        successHandled = true
-                        val cookies = CookieManager.getInstance().getCookie(current).orEmpty()
-                        Log.d(TAG, "Dashboard reached, cookies=$cookies")
-                        onLoginSuccess(cookies)
-                    }
+                    logCurrentUrl(url)
+                    if (!successHandled.value && hasTokenCookie()) fireSuccess()
                 }
             }
-        }
+        }.also { webViewRef.value = it }
     }
 
-    LaunchedEffect(webView) {
-        CookieManager.getInstance().setAcceptCookie(true)
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
+    val loadLoginPage: () -> Unit = {
+        successHandled.value = false
+        CookieManager.getInstance().removeAllCookies(null)
+        CookieManager.getInstance().flush()
         webView.loadUrl(LOGIN_URL)
     }
 
-    LaunchedEffect(reloadTrigger) {
-        if (reloadTrigger > 0) webView.reload()
+    LaunchedEffect(webView, reloadTrigger) {
+        CookieManager.getInstance().setAcceptCookie(true)
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
+        loadLoginPage()
+        while (!successHandled.value) {
+            delay(COOKIE_POLL_INTERVAL_MS)
+            if (hasTokenCookie()) fireSuccess()
+        }
     }
 
     AndroidView(factory = { webView }, modifier = modifier)

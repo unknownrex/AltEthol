@@ -13,3 +13,9 @@ fun createSessionDataStore(context: Context): DataStore<Preferences> =
         corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
         produceFile = { context.preferencesDataStoreFile("session") },
     )
+
+fun createSettingsDataStore(context: Context): DataStore<Preferences> =
+    PreferenceDataStoreFactory.create(
+        corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+        produceFile = { context.preferencesDataStoreFile("settings") },
+    )
