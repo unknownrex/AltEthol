@@ -170,6 +170,7 @@ fun HomeScreen(
             enabled = state.engineEnabled,
             onToggle = { onAction(HomeAction.OnToggleEngine(it)) },
             intervalSeconds = state.pollIntervalMinutes * 60L,
+            nextSyncAtEpochMillis = state.nextSyncAtEpochMillis,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp),
@@ -264,10 +265,15 @@ private fun StatusCard(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit,
     intervalSeconds: Long,
+    nextSyncAtEpochMillis: Long?,
     modifier: Modifier = Modifier,
 ) {
     val cardShape = RoundedCornerShape(24.dp)
-    val remainingSeconds = rememberRemainingSeconds(enabled, intervalSeconds)
+    val remainingSeconds = rememberRemainingSeconds(
+        enabled = enabled,
+        nextSyncAtEpochMillis = nextSyncAtEpochMillis,
+        fallbackTotalSeconds = intervalSeconds,
+    )
     Column(
         modifier = modifier
             .clip(cardShape)
@@ -401,18 +407,25 @@ private fun MetricCard(
 }
 
 @Composable
-private fun rememberRemainingSeconds(enabled: Boolean, totalSeconds: Long): Long {
-    var remaining by remember(enabled) { mutableLongStateOf(totalSeconds) }
-    LaunchedEffect(enabled) {
-        if (!enabled) return@LaunchedEffect
-        remaining = totalSeconds
+private fun rememberRemainingSeconds(
+    enabled: Boolean,
+    nextSyncAtEpochMillis: Long?,
+    fallbackTotalSeconds: Long,
+): Long {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(enabled, nextSyncAtEpochMillis) {
+        if (!enabled || nextSyncAtEpochMillis == null) {
+            now = System.currentTimeMillis()
+            return@LaunchedEffect
+        }
         while (true) {
+            now = System.currentTimeMillis()
             delay(1000)
-            remaining -= 1
-            if (remaining <= 0) remaining = totalSeconds
         }
     }
-    return remaining
+    if (!enabled) return 0L
+    val deadline = nextSyncAtEpochMillis ?: (System.currentTimeMillis() + fallbackTotalSeconds * 1000L)
+    return maxOf(0L, (deadline - now + 999L) / 1000L)
 }
 
 private fun formatCountdown(totalSeconds: Long): String {

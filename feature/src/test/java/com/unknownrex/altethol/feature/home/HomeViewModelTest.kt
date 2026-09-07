@@ -3,8 +3,10 @@ package com.unknownrex.altethol.feature.home
 import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNull
 import com.unknownrex.altethol.core.data.settings.SettingsStorage
 import com.unknownrex.altethol.feature.home.engine.EngineController
+import com.unknownrex.altethol.feature.home.engine.EngineTimeState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -60,7 +62,8 @@ class HomeViewModelTest {
     private fun viewModel(
         controller: FakeEngineController = FakeEngineController(),
         settings: FakeSettingsStorage = FakeSettingsStorage(),
-    ) = HomeViewModel(controller, settings)
+        timeState: EngineTimeState = EngineTimeState(),
+    ) = HomeViewModel(controller, settings, timeState)
 
     @Test
     fun `initial state reflects controller`() {
@@ -97,5 +100,26 @@ class HomeViewModelTest {
 
             assertThat(awaitItem() is HomeEvent.ShowMessage).isEqualTo(true)
         }
+    }
+
+    @Test
+    fun `state reflects engine next sync time update`() {
+        val timeState = EngineTimeState()
+        val viewModel = viewModel(timeState = timeState)
+
+        timeState.updateNextSync(123456789L)
+
+        assertThat(viewModel.state.value.nextSyncAtEpochMillis).isEqualTo(123456789L)
+    }
+
+    @Test
+    fun `state clears engine next sync time`() {
+        val timeState = EngineTimeState()
+        timeState.updateNextSync(123456789L)
+        val viewModel = viewModel(timeState = timeState)
+
+        timeState.updateNextSync(null)
+
+        assertThat(viewModel.state.value.nextSyncAtEpochMillis).isNull()
     }
 }

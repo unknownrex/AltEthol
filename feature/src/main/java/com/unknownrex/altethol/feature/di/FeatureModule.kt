@@ -10,6 +10,7 @@ import com.unknownrex.altethol.feature.home.engine.AttendanceNotifier
 import com.unknownrex.altethol.feature.home.engine.AttendanceSyncEngine
 import com.unknownrex.altethol.feature.home.engine.DefaultPresensiContextResolver
 import com.unknownrex.altethol.feature.home.engine.EngineController
+import com.unknownrex.altethol.feature.home.engine.EngineTimeState
 import com.unknownrex.altethol.feature.home.engine.NotifDiffCoordinator
 import com.unknownrex.altethol.feature.home.engine.PresensiContextResolver
 import com.unknownrex.altethol.feature.settings.SettingsViewModel
@@ -24,6 +25,7 @@ import org.koin.dsl.single
 
 val featureModule: Module = module {
     singleOf(::AndroidEngineController) { bind<EngineController>() }
+    singleOf(::EngineTimeState)
     viewModelOf(::SessionCheckViewModel)
     viewModelOf(::LoginViewModel)
     viewModelOf(::HomeViewModel)

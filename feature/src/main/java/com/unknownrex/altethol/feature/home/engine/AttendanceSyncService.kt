@@ -28,6 +28,7 @@ class AttendanceSyncService : Service() {
     private val syncEngine: AttendanceSyncEngine by lazy { get() }
     private val settings: SettingsStorage by lazy { get() }
     private val notifier: AttendanceNotifier by lazy { get() }
+    private val timeState: EngineTimeState by lazy { get() }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -41,6 +42,7 @@ class AttendanceSyncService : Service() {
 
     override fun onDestroy() {
         serviceScope.cancel()
+        timeState.updateNextSync(null)
         super.onDestroy()
     }
 
@@ -65,11 +67,14 @@ class AttendanceSyncService : Service() {
             syncResult.flowResults.forEach { notifier.notifyResult(it) }
             if (syncResult.outcome == SyncOutcome.SESSION_EXPIRED) {
                 Log.d(TAG, "Sesi berakhir, menghentikan layanan")
+                timeState.updateNextSync(null)
                 notifySessionExpired()
                 stopSelf()
                 return
             }
-            delay(pollIntervalMs())
+            val intervalMs = pollIntervalMs()
+            timeState.updateNextSync(System.currentTimeMillis() + intervalMs)
+            delay(intervalMs)
         }
     }
 

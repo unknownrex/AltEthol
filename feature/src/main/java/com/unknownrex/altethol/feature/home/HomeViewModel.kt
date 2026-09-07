@@ -6,6 +6,7 @@ import com.unknownrex.altethol.core.data.settings.SettingsStorage
 import com.unknownrex.altethol.core.ui.text.UiText
 import com.unknownrex.altethol.feature.R
 import com.unknownrex.altethol.feature.home.engine.EngineController
+import com.unknownrex.altethol.feature.home.engine.EngineTimeState
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 data class HomeState(
     val engineEnabled: Boolean = false,
     val pollIntervalMinutes: Int = SettingsStorage.DEFAULT_POLL_INTERVAL_MINUTES,
+    val nextSyncAtEpochMillis: Long? = null,
 )
 
 sealed interface HomeAction {
@@ -30,6 +32,7 @@ sealed interface HomeEvent {
 class HomeViewModel(
     private val engineController: EngineController,
     private val settingsStorage: SettingsStorage,
+    private val engineTimeState: EngineTimeState,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeState(engineController.enabled.value))
@@ -47,6 +50,11 @@ class HomeViewModel(
         viewModelScope.launch {
             settingsStorage.pollIntervalMinutes.collect { minutes ->
                 _state.update { it.copy(pollIntervalMinutes = minutes) }
+            }
+        }
+        viewModelScope.launch {
+            engineTimeState.nextSyncAtEpochMillis.collect { epochMillis ->
+                _state.update { it.copy(nextSyncAtEpochMillis = epochMillis) }
             }
         }
     }
