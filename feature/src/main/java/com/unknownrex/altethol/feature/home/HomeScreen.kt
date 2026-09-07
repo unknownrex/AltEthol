@@ -60,6 +60,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.unknownrex.altethol.core.data.settings.SettingsStorage
 import com.unknownrex.altethol.core.ui.ObserveAsEvents
 import com.unknownrex.altethol.core.ui.text.UiText
 import com.unknownrex.altethol.core.ui.theme.BorderPrimary
@@ -115,8 +116,12 @@ fun HomeRoot(
     }
 
     Scaffold(
-        modifier = modifier,
+        modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = { HomeHeader(
+            onOpenHistory = onOpenHistory,
+            onOpenSettings = onOpenSettings,
+        )}
     ) { innerPadding ->
         HomeScreen(
             state = state,
@@ -159,10 +164,7 @@ fun HomeScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
     ) {
-        HomeHeader(
-            onOpenHistory = onOpenHistory,
-            onOpenSettings = onOpenSettings,
-        )
+
         Spacer(Modifier.height(24.dp))
         StatusCard(
             enabled = state.engineEnabled,
@@ -422,10 +424,6 @@ private fun formatCountdown(totalSeconds: Long): String {
 @Preview
 @Composable
 private fun HomeScreenPreview() {
-    Column(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-    ) {
+    HomeScreen(state = HomeState(false, SettingsStorage.DEFAULT_POLL_INTERVAL_MINUTES), onAction = {}, onOpenHistory = { /*TODO*/ }, onOpenSettings = { /*TODO*/ })
 
-    }
-    HomeHeader(onOpenHistory = { /*TODO*/ }, onOpenSettings = { /*TODO*/ })
 }
