@@ -5,6 +5,7 @@ import com.unknownrex.altethol.core.common.error.DataError
 import com.unknownrex.altethol.core.common.result.Result
 import com.unknownrex.altethol.core.data.remote.AuthRepository
 import com.unknownrex.altethol.core.data.remote.dto.ValidasiTokenDto
+import com.unknownrex.altethol.core.data.session.SessionEventBus
 import com.unknownrex.altethol.core.data.session.SessionState
 import com.unknownrex.altethol.core.data.session.SessionStorage
 import kotlinx.coroutines.Dispatchers
@@ -91,7 +92,7 @@ class LoginViewModelTest {
     fun `successful login saves session validates token and navigates home`() = runTest {
         val storage = FakeSessionStorage()
         val auth = FakeAuthRepository(Result.Success(validToken))
-        val viewModel = LoginViewModel(storage, auth)
+        val viewModel = LoginViewModel(storage, auth, SessionEventBus())
 
         viewModel.events.test {
             viewModel.onAction(
@@ -114,7 +115,7 @@ class LoginViewModelTest {
     fun `login without token cookie stays on login`() = runTest {
         val storage = FakeSessionStorage()
         val auth = FakeAuthRepository(Result.Success(validToken))
-        val viewModel = LoginViewModel(storage, auth)
+        val viewModel = LoginViewModel(storage, auth, SessionEventBus())
 
         viewModel.onAction(LoginAction.OnLoginSuccess("PHPSESSID=only"))
 
@@ -125,10 +126,21 @@ class LoginViewModelTest {
     }
 
     @Test
+    fun `status change exposes show status event`() = runTest {
+        val viewModel = LoginViewModel(FakeSessionStorage(), FakeAuthRepository(Result.Success(validToken)), SessionEventBus())
+
+        viewModel.events.test {
+            viewModel.onAction(LoginAction.OnStatusChange("Mendapatkan token, harap tunggu..."))
+
+            assertThat(awaitItem()).isEqualTo(LoginEvent.ShowStatus("Mendapatkan token, harap tunggu..."))
+        }
+    }
+
+    @Test
     fun `invalid token clears session shows error and does not navigate`() = runTest {
         val storage = FakeSessionStorage()
         val auth = FakeAuthRepository(Result.Error(DataError.Network.UNAUTHORIZED))
-        val viewModel = LoginViewModel(storage, auth)
+        val viewModel = LoginViewModel(storage, auth, SessionEventBus())
 
         viewModel.onAction(LoginAction.OnLoginSuccess("token=jwt-token"))
 
@@ -142,7 +154,7 @@ class LoginViewModelTest {
     fun `network failure shows error and does not navigate nor clear session`() = runTest {
         val storage = FakeSessionStorage()
         val auth = FakeAuthRepository(Result.Error(DataError.Network.NO_INTERNET))
-        val viewModel = LoginViewModel(storage, auth)
+        val viewModel = LoginViewModel(storage, auth, SessionEventBus())
 
         viewModel.onAction(LoginAction.OnLoginSuccess("token=jwt-token"))
 
@@ -155,7 +167,7 @@ class LoginViewModelTest {
     fun `storage failure does not block validation and navigation`() = runTest {
         val storage = FakeSessionStorage().apply { throwOnSave = true }
         val auth = FakeAuthRepository(Result.Success(validToken))
-        val viewModel = LoginViewModel(storage, auth)
+        val viewModel = LoginViewModel(storage, auth, SessionEventBus())
 
         viewModel.events.test {
             viewModel.onAction(LoginAction.OnLoginSuccess("token=jwt-token"))

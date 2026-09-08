@@ -16,3 +16,4 @@ AGENTS.md
 .externalNativeBuild
 .cxx
 local.properties
+/app/release/

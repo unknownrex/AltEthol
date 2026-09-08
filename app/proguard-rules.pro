@@ -19,3 +19,8 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Tink: prevent missing-class errors during R8.
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn org.slf4j.impl.StaticLoggerBinder
+-keep class org.slf4j.impl.** { *; }

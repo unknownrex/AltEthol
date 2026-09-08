@@ -6,6 +6,7 @@ import com.unknownrex.altethol.core.data.remote.AuthRepository
 import com.unknownrex.altethol.core.data.remote.DefaultAttendanceRepository
 import com.unknownrex.altethol.core.data.remote.DefaultAuthRepository
 import com.unknownrex.altethol.core.data.session.SessionCipher
+import com.unknownrex.altethol.core.data.session.SessionEventBus
 import com.unknownrex.altethol.core.data.session.SessionPreferences
 import com.unknownrex.altethol.core.data.session.SessionStorage
 import com.unknownrex.altethol.core.data.session.TokenRefresher
@@ -20,6 +21,7 @@ import org.koin.dsl.module
 val coreDataModule: Module = module {
     single(named(DiQualifiers.SESSION_DATASTORE)) { createSessionDataStore(get()) }
     singleOf(::SessionCipher)
+    singleOf(::SessionEventBus)
     single(named(DiQualifiers.SETTINGS_DATASTORE)) { createSettingsDataStore(get()) }
 
     single<SessionStorage> { SessionPreferences(get(named(DiQualifiers.SESSION_DATASTORE)), get()) }

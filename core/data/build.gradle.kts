@@ -47,6 +47,9 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.androidx.security.crypto)
     implementation(libs.tink.android)
+    implementation(libs.error.prone.annotations)
+    implementation(libs.slf4j.api)
+    implementation(libs.slf4j.nop)
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)

@@ -2,6 +2,12 @@
 <resources>
     <string name="login_unrecognized">Login tidak dikenali, silakan coba lagi</string>
     <string name="login_reload">Muat ulang</string>
+    <string name="login_status_getting_token">Mendapatkan token, harap tunggu...</string>
+    <string name="login_status_waiting_refresh">Token ditemukan, menunggu refresh token...</string>
+    <string name="login_status_reloading_refresh">Token ditemukan, memuat ulang untuk refresh token (%1$d/%2$d)</string>
+    <string name="login_status_refresh_found">Refresh token ditemukan. Memverifikasi...</string>
+    <string name="login_status_refresh_unavailable">Refresh token tidak tersedia, melanjutkan...</string>
+    <string name="login_web_refresh">Muat ulang halaman</string>
     <string name="home_title">AltEthol</string>
     <string name="cd_history">Riwayat</string>
     <string name="cd_settings">Pengaturan</string>
@@ -22,9 +28,13 @@
     <string name="notification_permission_required">Izin notifikasi diperlukan untuk menjalankan Authol</string>
     <string name="engine_notification_title">AltEthol aktif</string>
     <string name="engine_notification_text">Memantau presensi tiap 5 menit</string>
+    <string name="engine_notification_next_sync">Request berikutnya dalam %1$s</string>
     <string name="engine_channel_name">Mesin Authol</string>
     <string name="engine_session_expired_title">Sesi berakhir</string>
     <string name="engine_session_expired_text">Silakan login ulang untuk melanjutkan Authol</string>
+    <string name="engine_session_expired_dialog_text">Sesi tidak dapat diperbarui. Silakan login ulang untuk melanjutkan Authol.</string>
+    <string name="engine_session_expired_login_again">Login ulang</string>
+    <string name="engine_session_expired_later">Nanti</string>
     <string name="engine_result_channel_name">Hasil Absensi</string>
     <string name="result_success_title">Absensi berhasil</string>
     <string name="result_success_text">Berhasil</string>

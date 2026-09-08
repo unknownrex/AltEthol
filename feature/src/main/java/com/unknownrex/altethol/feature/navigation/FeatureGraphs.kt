@@ -42,6 +42,11 @@ fun NavGraphBuilder.homeGraph(navController: NavController) {
         HomeRoot(
             onOpenHistory = { navController.navigate(HistoryRoute) },
             onOpenSettings = { navController.navigate(SettingsRoute) },
+            onNavigateToLogin = {
+                navController.navigate(LoginRoute) {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                }
+            },
         )
     }
 }

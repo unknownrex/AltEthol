@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -40,10 +41,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -81,6 +84,7 @@ import java.util.Locale
 fun HomeRoot(
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
+    onNavigateToLogin: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
@@ -88,6 +92,7 @@ fun HomeRoot(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var showSessionExpiredDialog by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -112,7 +117,31 @@ fun HomeRoot(
                     snackbarHostState.showSnackbar(message)
                 }
             }
+
+            HomeEvent.ShowSessionExpired -> showSessionExpiredDialog = true
         }
+    }
+
+    if (showSessionExpiredDialog) {
+        AlertDialog(
+            onDismissRequest = { showSessionExpiredDialog = false },
+            title = {
+                Text(stringResource(R.string.engine_session_expired_title))
+            },
+            text = {
+                Text(stringResource(R.string.engine_session_expired_dialog_text))
+            },
+            confirmButton = {
+                TextButton(onClick = onNavigateToLogin) {
+                    Text(stringResource(R.string.engine_session_expired_login_again))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSessionExpiredDialog = false }) {
+                    Text(stringResource(R.string.engine_session_expired_later))
+                }
+            },
+        )
     }
 
     Scaffold(

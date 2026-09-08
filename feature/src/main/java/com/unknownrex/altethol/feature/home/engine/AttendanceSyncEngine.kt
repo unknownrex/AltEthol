@@ -6,6 +6,7 @@ import com.unknownrex.altethol.core.common.result.Result
 import com.unknownrex.altethol.core.data.local.db.dao.AbsensiHistoriDao
 import com.unknownrex.altethol.core.data.local.db.dao.NotifCacheDao
 import com.unknownrex.altethol.core.data.remote.AttendanceRepository
+import com.unknownrex.altethol.core.data.session.SessionEventBus
 import com.unknownrex.altethol.core.data.session.SessionRefreshResult
 import com.unknownrex.altethol.core.data.session.TokenRefresher
 
@@ -27,6 +28,7 @@ class AttendanceSyncEngine(
     private val coordinator: NotifDiffCoordinator,
     private val flowRunner: AttendanceFlowRunner,
     private val tokenRefresher: TokenRefresher,
+    private val sessionEventBus: SessionEventBus,
     private val log: (String) -> Unit = { Log.d("AltEtholEngine", it) },
 ) {
 
@@ -34,6 +36,7 @@ class AttendanceSyncEngine(
         when (tokenRefresher.refreshIfNeeded()) {
             SessionRefreshResult.SESSION_EXPIRED -> {
                 log("Token refresh gagal, sesi berakhir")
+                sessionEventBus.emit()
                 return SyncResult(outcome = SyncOutcome.SESSION_EXPIRED)
             }
 

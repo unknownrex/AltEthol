@@ -51,7 +51,9 @@ class AttendanceNotifier(
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setContentIntent(NotificationIntentHelper.openAppPendingIntent(context))
                 .setAutoCancel(true)
+                .setOngoing(true)
                 .build(),
         )
     }

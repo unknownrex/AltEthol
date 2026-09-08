@@ -5,6 +5,7 @@ import com.unknownrex.altethol.core.common.error.DataError
 import com.unknownrex.altethol.core.common.result.Result
 import com.unknownrex.altethol.core.data.remote.AuthRepository
 import com.unknownrex.altethol.core.data.remote.dto.ValidasiTokenDto
+import com.unknownrex.altethol.core.data.session.SessionEventBus
 import com.unknownrex.altethol.core.data.session.SessionState
 import com.unknownrex.altethol.core.data.session.SessionStorage
 import com.unknownrex.altethol.core.data.session.TokenRefresher
@@ -103,7 +104,7 @@ class SessionCheckViewModelTest {
         auth: FakeAuthRepository,
         storage: FakeSessionStorage,
         refresher: TokenRefresher,
-    ) = SessionCheckViewModel(auth, storage, refresher)
+    ) = SessionCheckViewModel(auth, storage, refresher, SessionEventBus())
 
     @Test
     fun `no session routes to login`() = runTest {

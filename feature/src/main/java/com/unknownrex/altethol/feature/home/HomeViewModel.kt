@@ -2,6 +2,8 @@ package com.unknownrex.altethol.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.unknownrex.altethol.core.data.session.SessionEventBus
+import com.unknownrex.altethol.core.data.session.SessionStorage
 import com.unknownrex.altethol.core.data.settings.SettingsStorage
 import com.unknownrex.altethol.core.ui.text.UiText
 import com.unknownrex.altethol.feature.R
@@ -27,12 +29,15 @@ sealed interface HomeAction {
 
 sealed interface HomeEvent {
     data class ShowMessage(val message: UiText) : HomeEvent
+    data object ShowSessionExpired : HomeEvent
 }
 
 class HomeViewModel(
     private val engineController: EngineController,
     private val settingsStorage: SettingsStorage,
     private val engineTimeState: EngineTimeState,
+    private val sessionEventBus: SessionEventBus,
+    private val sessionStorage: SessionStorage,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeState(engineController.enabled.value))
@@ -55,6 +60,13 @@ class HomeViewModel(
         viewModelScope.launch {
             engineTimeState.nextSyncAtEpochMillis.collect { epochMillis ->
                 _state.update { it.copy(nextSyncAtEpochMillis = epochMillis) }
+            }
+        }
+        viewModelScope.launch {
+            sessionEventBus.sessionExpired.collect {
+                engineController.setEnabled(false)
+                sessionStorage.clear()
+                _events.send(HomeEvent.ShowSessionExpired)
             }
         }
     }

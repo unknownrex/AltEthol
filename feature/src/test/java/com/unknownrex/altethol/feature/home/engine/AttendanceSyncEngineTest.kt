@@ -22,6 +22,7 @@ import com.unknownrex.altethol.core.data.remote.dto.PresensiMahasiswaDto
 import com.unknownrex.altethol.core.data.remote.dto.PresensiMahasiswaRequest
 import com.unknownrex.altethol.core.data.remote.dto.TerakhirKuliahDto
 import com.unknownrex.altethol.core.data.remote.dto.ValidasiTokenDto
+import com.unknownrex.altethol.core.data.session.SessionEventBus
 import com.unknownrex.altethol.core.data.session.SessionState
 import com.unknownrex.altethol.core.data.session.SessionStorage
 import com.unknownrex.altethol.core.data.session.TokenRefresher
@@ -188,6 +189,7 @@ class AttendanceSyncEngineTest {
         coordinator = NotifDiffCoordinator(),
         flowRunner = AttendanceFlowRunner(repo, resolver, log = {}),
         tokenRefresher = refresher,
+        sessionEventBus = SessionEventBus(),
         log = {},
     )
 

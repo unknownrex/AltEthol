@@ -7,6 +7,7 @@ import com.unknownrex.altethol.core.ui.text.toUiText
 import com.unknownrex.altethol.core.common.result.onFailure
 import com.unknownrex.altethol.core.common.result.onSuccess
 import com.unknownrex.altethol.core.data.remote.AuthRepository
+import com.unknownrex.altethol.core.data.session.SessionEventBus
 import com.unknownrex.altethol.core.data.session.SessionRefreshResult
 import com.unknownrex.altethol.core.data.session.SessionStorage
 import com.unknownrex.altethol.core.data.session.TokenRefresher
@@ -37,6 +38,7 @@ class SessionCheckViewModel(
     private val authRepository: AuthRepository,
     private val sessionStorage: SessionStorage,
     private val tokenRefresher: TokenRefresher,
+    private val sessionEventBus: SessionEventBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<SessionCheckState>(SessionCheckState.Checking)
@@ -87,6 +89,7 @@ class SessionCheckViewModel(
             authRepository.validateToken()
                 .onSuccess { data ->
                     sessionStorage.saveMahasiswaId(data.nomor)
+                    sessionEventBus.clear()
                     _events.send(SessionCheckEvent.NavigateToHome)
                 }
                 .onFailure { error ->

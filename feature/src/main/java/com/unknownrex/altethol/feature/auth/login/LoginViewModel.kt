@@ -7,6 +7,7 @@ import com.unknownrex.altethol.core.common.error.DataError
 import com.unknownrex.altethol.core.common.result.onFailure
 import com.unknownrex.altethol.core.common.result.onSuccess
 import com.unknownrex.altethol.core.data.remote.AuthRepository
+import com.unknownrex.altethol.core.data.session.SessionEventBus
 import com.unknownrex.altethol.core.data.session.SessionStorage
 import com.unknownrex.altethol.core.ui.text.UiText
 import com.unknownrex.altethol.core.ui.text.toUiText
@@ -26,16 +27,19 @@ data class LoginState(
 
 sealed interface LoginAction {
     data class OnLoginSuccess(val cookieString: String) : LoginAction
+    data class OnStatusChange(val status: String) : LoginAction
     data object OnReload : LoginAction
 }
 
 sealed interface LoginEvent {
     data object NavigateToHome : LoginEvent
+    data class ShowStatus(val message: String) : LoginEvent
 }
 
 class LoginViewModel(
     private val sessionStorage: SessionStorage,
     private val authRepository: AuthRepository,
+    private val sessionEventBus: SessionEventBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LoginState())
@@ -47,6 +51,7 @@ class LoginViewModel(
     fun onAction(action: LoginAction) {
         when (action) {
             is LoginAction.OnLoginSuccess -> handleLoginSuccess(action.cookieString)
+            is LoginAction.OnStatusChange -> _events.trySend(LoginEvent.ShowStatus(action.status))
             LoginAction.OnReload -> _state.update {
                 it.copy(error = null, reloadTrigger = it.reloadTrigger + 1)
             }
@@ -57,6 +62,12 @@ class LoginViewModel(
         val token = CookieParser.extractToken(cookieString)
         val refreshToken = CookieParser.extractRefreshToken(cookieString)
         Log.d(TAG, "Login success. token=${token?.take(16)} refreshToken=${refreshToken?.take(16)}")
+        when {
+            token.isNullOrBlank() -> Log.d(TAG, "No token cookie found, staying on login")
+            refreshToken.isNullOrBlank() ->
+                Log.w(TAG, "refresh_token NOT present in cookies after reload attempts; proceeding token-only")
+            else -> Log.d(TAG, "Both token and refresh_token captured")
+        }
 
         if (token.isNullOrBlank()) {
             Log.d(TAG, "No token cookie found, staying on login")
@@ -70,6 +81,7 @@ class LoginViewModel(
             authRepository.validateToken().onSuccess { data ->
                 Log.d(TAG, "Validation OK, nomor=${data.nomor}")
                 sessionStorage.saveMahasiswaId(data.nomor)
+                sessionEventBus.clear()
                 _events.send(LoginEvent.NavigateToHome)
             }.onFailure { error ->
                 Log.e(TAG, "Validation failed: $error")

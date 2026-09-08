@@ -49,6 +49,7 @@ val featureModule: Module = module {
             coordinator = get(),
             flowRunner = get(),
             tokenRefresher = get(),
+            sessionEventBus = get(),
         )
     }
 }

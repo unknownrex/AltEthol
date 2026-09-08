@@ -1,5 +1,6 @@
 package com.unknownrex.altethol.feature.home.engine
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -10,6 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.unknownrex.altethol.core.data.session.SessionEventBus
 import com.unknownrex.altethol.core.data.settings.SettingsStorage
 import com.unknownrex.altethol.feature.R
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
+import java.util.Locale
 
 class AttendanceSyncService : Service() {
 
@@ -29,6 +32,7 @@ class AttendanceSyncService : Service() {
     private val settings: SettingsStorage by lazy { get() }
     private val notifier: AttendanceNotifier by lazy { get() }
     private val timeState: EngineTimeState by lazy { get() }
+    private val sessionEventBus: SessionEventBus by lazy { get() }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -36,6 +40,7 @@ class AttendanceSyncService : Service() {
         super.onCreate()
         startAsForeground()
         serviceScope.launch { runSyncLoop() }
+        serviceScope.launch { runCountdownTicker() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -48,16 +53,37 @@ class AttendanceSyncService : Service() {
 
     private fun startAsForeground() {
         createNotificationChannel()
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(getString(R.string.engine_notification_title))
-            .setContentText(getString(R.string.engine_notification_text))
-            .setOngoing(true)
-            .build()
+        val notification = buildForegroundNotification(
+            contentText = getString(R.string.engine_notification_text),
+        )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
             startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun buildForegroundNotification(contentText: String): Notification =
+        NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(getString(R.string.engine_notification_title))
+            .setContentText(contentText)
+            .setContentIntent(NotificationIntentHelper.openAppPendingIntent(this))
+            .setOngoing(true)
+            .build()
+
+    private suspend fun CoroutineScope.runCountdownTicker() {
+        while (isActive) {
+            val contentText = timeState.nextSyncAtEpochMillis.value?.let { nextSync ->
+                val remaining = maxOf(0L, nextSync - System.currentTimeMillis())
+                getString(
+                    R.string.engine_notification_next_sync,
+                    formatCountdown(remaining),
+                )
+            } ?: getString(R.string.engine_notification_text)
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(NOTIFICATION_ID, buildForegroundNotification(contentText))
+            delay(TICKER_INTERVAL_MS)
         }
     }
 
@@ -68,6 +94,7 @@ class AttendanceSyncService : Service() {
             if (syncResult.outcome == SyncOutcome.SESSION_EXPIRED) {
                 Log.d(TAG, "Sesi berakhir, menghentikan layanan")
                 timeState.updateNextSync(null)
+                sessionEventBus.emit()
                 notifySessionExpired()
                 stopSelf()
                 return
@@ -91,7 +118,9 @@ class AttendanceSyncService : Service() {
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(getString(R.string.engine_session_expired_title))
                 .setContentText(getString(R.string.engine_session_expired_text))
+                .setContentIntent(NotificationIntentHelper.openAppPendingIntent(this))
                 .setAutoCancel(true)
+                .setOngoing(true)
                 .build(),
         )
     }
@@ -107,11 +136,19 @@ class AttendanceSyncService : Service() {
         )
     }
 
+    private fun formatCountdown(remainingMillis: Long): String {
+        val totalSeconds = remainingMillis / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+    }
+
     private companion object {
         const val TAG = "AltEtholEngine"
         const val CHANNEL_ID = "altethol_engine"
         const val NOTIFICATION_ID = 1001
         const val SESSION_EXPIRED_NOTIFICATION_ID = 1002
         const val MIN_POLL_INTERVAL_MS = 3 * 60 * 1000L
+        const val TICKER_INTERVAL_MS = 1_000L
     }
 }

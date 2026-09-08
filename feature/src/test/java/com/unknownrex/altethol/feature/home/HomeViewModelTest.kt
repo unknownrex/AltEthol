@@ -4,6 +4,10 @@ import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
+import assertk.assertions.isTrue
+import com.unknownrex.altethol.core.data.session.SessionEventBus
+import com.unknownrex.altethol.core.data.session.SessionState
+import com.unknownrex.altethol.core.data.session.SessionStorage
 import com.unknownrex.altethol.core.data.settings.SettingsStorage
 import com.unknownrex.altethol.feature.home.engine.EngineController
 import com.unknownrex.altethol.feature.home.engine.EngineTimeState
@@ -59,17 +63,58 @@ class HomeViewModelTest {
         }
     }
 
+    private class FakeSessionStorage(
+        initialState: SessionState = SessionState(),
+    ) : SessionStorage {
+        private val _session = MutableStateFlow(initialState)
+        override val session: Flow<SessionState> = _session
+        var cleared = false
+
+        override suspend fun saveSession(token: String, refreshToken: String?) = Unit
+
+        override suspend fun saveToken(token: String) = Unit
+
+        override suspend fun saveMahasiswaId(id: Int) = Unit
+
+        override suspend fun clear() {
+            cleared = true
+            _session.value = SessionState()
+        }
+    }
+
     private fun viewModel(
         controller: FakeEngineController = FakeEngineController(),
         settings: FakeSettingsStorage = FakeSettingsStorage(),
         timeState: EngineTimeState = EngineTimeState(),
-    ) = HomeViewModel(controller, settings, timeState)
+        eventBus: SessionEventBus = SessionEventBus(),
+        sessionStorage: FakeSessionStorage = FakeSessionStorage(),
+    ) = HomeViewModel(controller, settings, timeState, eventBus, sessionStorage)
 
     @Test
     fun `initial state reflects controller`() {
         val viewModel = viewModel(controller = FakeEngineController(initialEnabled = true))
 
         assertThat(viewModel.state.value.engineEnabled).isEqualTo(true)
+    }
+
+    @Test
+    fun `session expired event stops engine clears session and emits ShowSessionExpired`() = runTest {
+        val controller = FakeEngineController(initialEnabled = true)
+        val eventBus = SessionEventBus()
+        val sessionStorage = FakeSessionStorage()
+        val viewModel = viewModel(
+            controller = controller,
+            eventBus = eventBus,
+            sessionStorage = sessionStorage,
+        )
+
+        viewModel.events.test {
+            eventBus.emit()
+
+            assertThat((awaitItem() as HomeEvent.ShowSessionExpired)).isEqualTo(HomeEvent.ShowSessionExpired)
+        }
+        assertThat(controller.lastSetEnabled).isEqualTo(false)
+        assertThat(sessionStorage.cleared).isTrue()
     }
 
     @Test
