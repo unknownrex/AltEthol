@@ -16,6 +16,10 @@ enum class SyncOutcome {
     RETRYABLE_ERROR,
 }
 
+interface SyncEngine {
+    suspend fun syncOnce(): SyncResult
+}
+
 data class SyncResult(
     val outcome: SyncOutcome,
     val flowResults: List<AttendanceFlowResult> = emptyList(),
@@ -30,9 +34,9 @@ class AttendanceSyncEngine(
     private val tokenRefresher: TokenRefresher,
     private val sessionEventBus: SessionEventBus,
     private val log: (String) -> Unit = { Log.d("AltEtholEngine", it) },
-) {
+) : SyncEngine {
 
-    suspend fun syncOnce(): SyncResult {
+    override suspend fun syncOnce(): SyncResult {
         when (tokenRefresher.refreshIfNeeded()) {
             SessionRefreshResult.SESSION_EXPIRED -> {
                 log("Token refresh gagal, sesi berakhir")

@@ -43,6 +43,7 @@ android {
                 load(secretPropertiesFile.inputStream())
             }
             buildConfigField("String", "BASE_URL", secretProperties.getProperty("BASE_URL"))
+            signingConfig = signingConfigs.getByName("debug")
         }
         debug {
             val secretPropertiesFile = rootProject.file("app/src/debug/secret.properties")

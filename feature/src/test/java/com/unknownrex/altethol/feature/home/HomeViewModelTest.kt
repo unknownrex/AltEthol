@@ -5,12 +5,20 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import com.unknownrex.altethol.core.data.local.db.dao.AbsensiHistoriDao
+import com.unknownrex.altethol.core.data.local.db.entity.AbsensiHistoriEntity
+import com.unknownrex.altethol.core.data.model.AttendanceStatus
 import com.unknownrex.altethol.core.data.session.SessionEventBus
 import com.unknownrex.altethol.core.data.session.SessionState
 import com.unknownrex.altethol.core.data.session.SessionStorage
 import com.unknownrex.altethol.core.data.settings.SettingsStorage
+import com.unknownrex.altethol.core.ui.text.UiText
+import com.unknownrex.altethol.feature.home.engine.AttendanceFlowResult
 import com.unknownrex.altethol.feature.home.engine.EngineController
 import com.unknownrex.altethol.feature.home.engine.EngineTimeState
+import com.unknownrex.altethol.feature.home.engine.SyncEngine
+import com.unknownrex.altethol.feature.home.engine.SyncOutcome
+import com.unknownrex.altethol.feature.home.engine.SyncResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -27,9 +35,11 @@ import org.junit.jupiter.api.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
 
+    private val testDispatcher = UnconfinedTestDispatcher()
+
     @BeforeEach
     fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        Dispatchers.setMain(testDispatcher)
     }
 
     @AfterEach
@@ -82,13 +92,39 @@ class HomeViewModelTest {
         }
     }
 
+    private class FakeAbsensiHistoriDao(
+        initialRecords: List<AbsensiHistoriEntity> = emptyList(),
+    ) : AbsensiHistoriDao {
+        private val _records = MutableStateFlow(initialRecords)
+        override suspend fun insert(histori: AbsensiHistoriEntity): Long {
+            _records.value = _records.value + histori
+            return 1L
+        }
+        override fun observeAll(): Flow<List<AbsensiHistoriEntity>> = _records
+        override suspend fun clear() {
+            _records.value = emptyList()
+        }
+    }
+
+    private class FakeSyncEngine(
+        var result: SyncResult = SyncResult(SyncOutcome.OK),
+    ) : SyncEngine {
+        var lastCalled = false
+        override suspend fun syncOnce(): SyncResult {
+            lastCalled = true
+            return result
+        }
+    }
+
     private fun viewModel(
         controller: FakeEngineController = FakeEngineController(),
         settings: FakeSettingsStorage = FakeSettingsStorage(),
         timeState: EngineTimeState = EngineTimeState(),
         eventBus: SessionEventBus = SessionEventBus(),
         sessionStorage: FakeSessionStorage = FakeSessionStorage(),
-    ) = HomeViewModel(controller, settings, timeState, eventBus, sessionStorage)
+        historyDao: FakeAbsensiHistoriDao = FakeAbsensiHistoriDao(),
+        syncEngine: FakeSyncEngine = FakeSyncEngine(),
+    ) = HomeViewModel(controller, settings, timeState, eventBus, sessionStorage, historyDao, syncEngine)
 
     @Test
     fun `initial state reflects controller`() {
@@ -137,13 +173,137 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `absen now shows placeholder message`() = runTest {
-        val viewModel = viewModel()
+    fun `total attendance counts only successful records from history`() {
+        val historyDao = FakeAbsensiHistoriDao(
+            initialRecords = listOf(
+                historyEntity(status = AttendanceStatus.SUCCESS),
+                historyEntity(status = AttendanceStatus.SUCCESS),
+                historyEntity(status = AttendanceStatus.FAILED),
+            ),
+        )
+        val viewModel = viewModel(historyDao = historyDao)
+
+        assertThat(viewModel.state.value.totalAttendanceSuccess).isEqualTo(2)
+    }
+
+    @Test
+    fun `total attendance updates when history changes`() = runTest(testDispatcher.scheduler) {
+        val historyDao = FakeAbsensiHistoriDao()
+        val viewModel = viewModel(historyDao = historyDao)
+
+        assertThat(viewModel.state.value.totalAttendanceSuccess).isEqualTo(0)
+
+        historyDao.insert(historyEntity(status = AttendanceStatus.SUCCESS))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.state.value.totalAttendanceSuccess).isEqualTo(1)
+    }
+
+    private fun historyEntity(status: AttendanceStatus) = AbsensiHistoriEntity(
+        matakuliah = "Matakuliah",
+        kuliahId = 1,
+        waktuDeteksi = 0L,
+        waktuAbsenDieksekusi = 0L,
+        status = status,
+        pesanServer = "ok",
+    )
+
+    @Test
+    fun `absen now with no candidates shows no notification message`() = runTest {
+        val syncEngine = FakeSyncEngine(SyncResult(SyncOutcome.OK, emptyList()))
+        val viewModel = viewModel(syncEngine = syncEngine)
 
         viewModel.events.test {
             viewModel.onAction(HomeAction.OnAbsenNow)
 
-            assertThat(awaitItem() is HomeEvent.ShowMessage).isEqualTo(true)
+            assertThat((awaitItem() as HomeEvent.ShowMessage).message)
+                .isEqualTo(UiText.DynamicString("Tidak ada notifikasi presensi baru"))
+        }
+        assertThat(syncEngine.lastCalled).isTrue()
+    }
+
+    @Test
+    fun `absen now with a submitted result shows success message with matakuliah`() = runTest {
+        val syncEngine = FakeSyncEngine(
+            SyncResult(
+                SyncOutcome.OK,
+                listOf(
+                    AttendanceFlowResult.Submitted(
+                        idNotifikasi = "1",
+                        matakuliah = "Matematika",
+                        kuliahId = 10,
+                        pesan = "ok",
+                    ),
+                ),
+            ),
+        )
+        val viewModel = viewModel(syncEngine = syncEngine)
+
+        viewModel.events.test {
+            viewModel.onAction(HomeAction.OnAbsenNow)
+
+            assertThat((awaitItem() as HomeEvent.ShowMessage).message)
+                .isEqualTo(UiText.DynamicString("Absensi berhasil: Matematika"))
+        }
+    }
+
+    @Test
+    fun `absen now with only skipped or failed results shows no session message`() = runTest {
+        val syncEngine = FakeSyncEngine(
+            SyncResult(
+                SyncOutcome.OK,
+                listOf(
+                    AttendanceFlowResult.Skipped(
+                        idNotifikasi = "1",
+                        matakuliah = "Fisika",
+                        kuliahId = 10,
+                        reason = "tidak ada sesi presensi terbuka",
+                    ),
+                ),
+            ),
+        )
+        val viewModel = viewModel(syncEngine = syncEngine)
+
+        viewModel.events.test {
+            viewModel.onAction(HomeAction.OnAbsenNow)
+
+            assertThat((awaitItem() as HomeEvent.ShowMessage).message)
+                .isEqualTo(UiText.DynamicString("Tidak ada sesi presensi yang dapat diisi"))
+        }
+    }
+
+    @Test
+    fun `absen now sets running flag true then false`() = runTest {
+        val syncEngine = FakeSyncEngine()
+        val viewModel = viewModel(syncEngine = syncEngine)
+
+        viewModel.onAction(HomeAction.OnAbsenNow)
+
+        assertThat(viewModel.state.value.isAbsenNowRunning).isEqualTo(false)
+    }
+
+    @Test
+    fun `absen now on session expired emits ShowSessionExpired`() = runTest {
+        val syncEngine = FakeSyncEngine(SyncResult(SyncOutcome.SESSION_EXPIRED))
+        val viewModel = viewModel(syncEngine = syncEngine)
+
+        viewModel.events.test {
+            viewModel.onAction(HomeAction.OnAbsenNow)
+
+            assertThat(awaitItem()).isEqualTo(HomeEvent.ShowSessionExpired)
+        }
+    }
+
+    @Test
+    fun `absen now on retryable error shows error message`() = runTest {
+        val syncEngine = FakeSyncEngine(SyncResult(SyncOutcome.RETRYABLE_ERROR))
+        val viewModel = viewModel(syncEngine = syncEngine)
+
+        viewModel.events.test {
+            viewModel.onAction(HomeAction.OnAbsenNow)
+
+            assertThat((awaitItem() as HomeEvent.ShowMessage).message)
+                .isEqualTo(UiText.DynamicString("Gagal mengambil data notifikasi. Coba lagi."))
         }
     }
 

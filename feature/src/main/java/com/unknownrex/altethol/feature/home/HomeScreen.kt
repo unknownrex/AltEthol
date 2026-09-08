@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -215,13 +216,24 @@ fun HomeScreen(
             colors = ButtonDefaults.buttonColors(
                 containerColor = BrandBlue,
                 contentColor = Color.White,
+                disabledContainerColor = BrandBlue.copy(alpha = 0.5f),
+                disabledContentColor = Color.White.copy(alpha = 0.7f),
             ),
             elevation = null,
+            enabled = !state.isAbsenNowRunning,
         ) {
-            Text(
-                text = stringResource(R.string.absen_now),
-                style = MaterialTheme.typography.labelLarge,
-            )
+            if (state.isAbsenNowRunning) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Text(
+                    text = stringResource(R.string.absen_now),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
         }
         Spacer(Modifier.height(24.dp))
         Row(
@@ -239,7 +251,7 @@ fun HomeScreen(
             )
             MetricCard(
                 icon = Icons.Outlined.CheckCircle,
-                value = stringResource(R.string.metric_attendance_value),
+                value = state.totalAttendanceSuccess.toString(),
                 label = stringResource(R.string.metric_attendance_label),
                 iconTint = SuccessGreen,
                 modifier = Modifier.weight(1f),

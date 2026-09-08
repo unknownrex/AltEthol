@@ -13,12 +13,14 @@ import com.unknownrex.altethol.feature.home.engine.EngineController
 import com.unknownrex.altethol.feature.home.engine.EngineTimeState
 import com.unknownrex.altethol.feature.home.engine.NotifDiffCoordinator
 import com.unknownrex.altethol.feature.home.engine.PresensiContextResolver
+import com.unknownrex.altethol.feature.home.engine.SyncEngine
 import com.unknownrex.altethol.feature.settings.SettingsViewModel
 import org.koin.androidx.viewmodel.dsl.viewModelOf
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.bind
 import org.koin.dsl.factory
 import org.koin.dsl.module
 import org.koin.dsl.single
@@ -51,5 +53,5 @@ val featureModule: Module = module {
             tokenRefresher = get(),
             sessionEventBus = get(),
         )
-    }
+    } bind SyncEngine::class
 }
