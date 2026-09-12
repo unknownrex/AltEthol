@@ -465,7 +465,8 @@ private fun rememberRemainingSeconds(
         }
     }
     if (!enabled) return 0L
-    val deadline = nextSyncAtEpochMillis ?: (System.currentTimeMillis() + fallbackTotalSeconds * 1000L)
+    val deadline = nextSyncAtEpochMillis?.takeIf { it > now }
+        ?: (System.currentTimeMillis() + fallbackTotalSeconds * 1000L)
     return maxOf(0L, (deadline - now + 999L) / 1000L)
 }
 

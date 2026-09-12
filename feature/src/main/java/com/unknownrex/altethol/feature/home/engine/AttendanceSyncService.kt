@@ -89,19 +89,35 @@ class AttendanceSyncService : Service() {
 
     private suspend fun CoroutineScope.runSyncLoop() {
         while (isActive) {
-            val syncResult = syncEngine.syncOnce()
-            syncResult.flowResults.forEach { notifier.notifyResult(it) }
-            if (syncResult.outcome == SyncOutcome.SESSION_EXPIRED) {
-                Log.d(TAG, "Sesi berakhir, menghentikan layanan")
-                timeState.updateNextSync(null)
-                sessionEventBus.emit()
-                notifySessionExpired()
-                stopSelf()
-                return
-            }
             val intervalMs = pollIntervalMs()
-            timeState.updateNextSync(System.currentTimeMillis() + intervalMs)
-            delay(intervalMs)
+            val scheduled = maxOf(
+                timeState.nextSyncAtEpochMillis.value ?: 0L,
+                System.currentTimeMillis(),
+            ) + intervalMs
+            timeState.updateNextSync(scheduled)
+
+            val syncResult = runCatching { syncEngine.syncOnce() }
+                .getOrElse {
+                    Log.e(TAG, "Sinkronisasi gagal", it)
+                    SyncResult(outcome = SyncOutcome.RETRYABLE_ERROR)
+                }
+            syncResult.flowResults.forEach { notifier.notifyResult(it) }
+
+            when (syncResult.outcome) {
+                SyncOutcome.SESSION_EXPIRED -> {
+                    Log.d(TAG, "Sesi berakhir, menghentikan layanan")
+                    timeState.updateNextSync(null)
+                    sessionEventBus.emit()
+                    notifySessionExpired()
+                    stopSelf()
+                    return
+                }
+                SyncOutcome.RETRYABLE_ERROR -> {
+                    timeState.updateNextSync(System.currentTimeMillis() + RETRY_BACKOFF_MS)
+                    delay(RETRY_BACKOFF_MS)
+                }
+                SyncOutcome.OK -> delay(maxOf(0L, scheduled - System.currentTimeMillis()))
+            }
         }
     }
 
@@ -149,6 +165,7 @@ class AttendanceSyncService : Service() {
         const val NOTIFICATION_ID = 1001
         const val SESSION_EXPIRED_NOTIFICATION_ID = 1002
         const val MIN_POLL_INTERVAL_MS = 3 * 60 * 1000L
+        const val RETRY_BACKOFF_MS = 30_000L
         const val TICKER_INTERVAL_MS = 1_000L
     }
 }
